@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const todayStr = () => new Date().toISOString().split("T")[0];
@@ -2664,9 +2664,9 @@ function TaskList({
 export default function App() {
   const [dark, setDark] = useState(true);
   // users ve me burada yaşıyor — tek source of truth
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState(() => { try { const s = localStorage.getItem("evanato_users"); return s ? JSON.parse(s) : INITIAL_USERS; } catch { return INITIAL_USERS; }});
   const [me, setMe] = useState(null);
-  const [tasks, setTasks] = useState(SEED_TASKS);
+  const [tasks, setTasks] = useState(() => { try { const s = localStorage.getItem("evanato_tasks"); return s ? JSON.parse(s) : SEED_TASKS; } catch { return SEED_TASKS; }});
   const [navTab, setNavTab] = useState("mine");
   const [filterUser, setFU] = useState("");
   const [modal, setModal] = useState(null);
@@ -2678,6 +2678,8 @@ export default function App() {
   const [hideDone, setHideDone] = useState(false);
 
   injectCss(dark);
+  React.useEffect(() => { localStorage.setItem("evanato_users", JSON.stringify(users)); }, [users]);
+  React.useEffect(() => { localStorage.setItem("evanato_tasks", JSON.stringify(tasks)); }, [tasks]);
   const t = dark ? DARK : LIGHT;
   const toggleDark = () => setDark((d) => !d);
 
