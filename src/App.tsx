@@ -1258,6 +1258,8 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
   const doReg = async () => {
     if (!name.trim() || !email.trim() || !pw.trim())
       return setErr("Tüm alanlar zorunlu.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      return setErr("Geçerli bir e-posta adresi gir.");
     if (users.find((u) => u.email === email))
       return setErr("Bu e-posta zaten kayıtlı.");
     const u = {
