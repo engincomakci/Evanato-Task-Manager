@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
+import { db } from "./firebase";
+import { collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDocs } from "firebase/firestore";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const todayStr = () => new Date().toISOString().split("T")[0];
@@ -460,7 +462,7 @@ function SettingsScreen({
     setEditErr("");
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editName.trim() || !editEmail.trim())
       return setEditErr("Ad ve e-posta zorunlu.");
     if (
@@ -468,27 +470,20 @@ function SettingsScreen({
     )
       return setEditErr("Bu e-posta başka kullanıcıda mevcut.");
 
-    const updatedUsers = users.map((u) =>
-      u.id === editingUser.id
-        ? {
-            ...u,
-            name: editName.trim(),
-            email: editEmail.trim(),
-            password: editPw.trim() || u.password,
-            role: editRole,
-          }
-        : u
-    );
-    setUsers(updatedUsers);
-    // Eğer oturum açık kullanıcı düzenlendiyse me'yi de güncelle
-    if (me.id === editingUser.id) {
-      setMe(updatedUsers.find((u) => u.id === me.id));
-    }
+    const updatedUser = {
+      ...editingUser,
+      name: editName.trim(),
+      email: editEmail.trim(),
+      password: editPw.trim() || editingUser.password,
+      role: editRole,
+    };
+    await setDoc(doc(db, "users", updatedUser.id), updatedUser);
+    if (me.id === editingUser.id) setMe(updatedUser);
     setEditingUser(null);
     showToast("Kullanıcı güncellendi.");
   };
 
-  const doAddUser = () => {
+  const doAddUser = async () => {
     if (!newName.trim() || !newEmail.trim() || !newPw.trim())
       return setNewErr("Tüm alanlar zorunlu.");
     if (users.find((u) => u.email === newEmail.trim()))
@@ -500,7 +495,7 @@ function SettingsScreen({
       password: newPw.trim(),
       role: newRole,
     };
-    setUsers((prev) => [...prev, u]);
+    await setDoc(doc(db, "users", u.id), u);
     setNewName("");
     setNewEmail("");
     setNewPw("");
@@ -510,30 +505,26 @@ function SettingsScreen({
     showToast("Kullanıcı eklendi.");
   };
 
-  const doDeleteUser = (id) => {
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+  const doDeleteUser = async (id) => {
+    await deleteDoc(doc(db, "users", id));
     setConfirmDelete(null);
     showToast("Kullanıcı silindi.", "danger");
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (!profName.trim() || !profEmail.trim())
       return setProfErr("Ad ve e-posta zorunlu.");
     if (users.find((u) => u.email === profEmail.trim() && u.id !== me.id))
       return setProfErr("Bu e-posta başka kullanıcıda mevcut.");
 
-    const updatedUsers = users.map((u) =>
-      u.id === me.id
-        ? {
-            ...u,
-            name: profName.trim(),
-            email: profEmail.trim(),
-            password: profPw.trim() || u.password,
-          }
-        : u
-    );
-    setUsers(updatedUsers);
-    setMe(updatedUsers.find((u) => u.id === me.id));
+    const updatedMe = {
+      ...me,
+      name: profName.trim(),
+      email: profEmail.trim(),
+      password: profPw.trim() || me.password,
+    };
+    await setDoc(doc(db, "users", me.id), updatedMe);
+    setMe(updatedMe);
     setProfPw("");
     setProfErr("");
     showToast("Profilin güncellendi.");
@@ -1264,7 +1255,7 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
     if (!u) return setErr("E-posta veya şifre hatalı.");
     onLogin(u);
   };
-  const doReg = () => {
+  const doReg = async () => {
     if (!name.trim() || !email.trim() || !pw.trim())
       return setErr("Tüm alanlar zorunlu.");
     if (users.find((u) => u.email === email))
@@ -1276,7 +1267,7 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
       password: pw,
       role: "member",
     };
-    setUsers((p) => [...p, u]);
+    await setDoc(doc(db, "users", u.id), u);
     onLogin(u);
   };
 
@@ -2664,9 +2655,9 @@ function TaskList({
 export default function App() {
   const [dark, setDark] = useState(true);
   // users ve me burada yaşıyor — tek source of truth
-  const [users, setUsers] = useState(() => { try { const s = localStorage.getItem("evanato_users"); return s ? JSON.parse(s) : INITIAL_USERS; } catch { return INITIAL_USERS; }});
+  const [users, setUsers] = useState(INITIAL_USERS);
   const [me, setMe] = useState(null);
-  const [tasks, setTasks] = useState(() => { try { const s = localStorage.getItem("evanato_tasks"); return s ? JSON.parse(s) : SEED_TASKS; } catch { return SEED_TASKS; }});
+  const [tasks, setTasks] = useState(SEED_TASKS);
   const [navTab, setNavTab] = useState("mine");
   const [filterUser, setFU] = useState("");
   const [modal, setModal] = useState(null);
@@ -2678,8 +2669,45 @@ export default function App() {
   const [hideDone, setHideDone] = useState(false);
 
   injectCss(dark);
-  React.useEffect(() => { localStorage.setItem("evanato_users", JSON.stringify(users)); }, [users]);
-  React.useEffect(() => { localStorage.setItem("evanato_tasks", JSON.stringify(tasks)); }, [tasks]);
+
+  // Firebase: ilk yukleme
+  useEffect(() => {
+    const init = async () => {
+      const usersSnap = await getDocs(collection(db, "users"));
+      if (usersSnap.empty) {
+        for (const u of INITIAL_USERS) {
+          await setDoc(doc(db, "users", u.id), u);
+        }
+      }
+      const tasksSnap = await getDocs(collection(db, "tasks"));
+      if (tasksSnap.empty) {
+        for (const tk of SEED_TASKS) {
+          await setDoc(doc(db, "tasks", tk.id), tk);
+        }
+      }
+    };
+    init();
+  }, []);
+
+  // Firebase: users okuma
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "users"), (snap) => {
+      if (!snap.empty) {
+        setUsers(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Firebase: tasks okuma
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "tasks"), (snap) => {
+      if (!snap.empty) {
+        setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
+      }
+    });
+    return () => unsub();
+  }, []);
   const t = dark ? DARK : LIGHT;
   const toggleDark = () => setDark((d) => !d);
 
@@ -2708,7 +2736,7 @@ export default function App() {
     if (task.repeat === "monthly") return addMonths(d, 1);
     return d;
   };
-  const handleSave = (data) => {
+  const handleSave = async (data) => {
     if (!modal || modal === "new")
       setTasks((p) => [
         { id: uid(), ownerId: me.id, createdAt: Date.now(), ...data },
@@ -2720,42 +2748,33 @@ export default function App() {
       );
     setModal(null);
   };
-  const changeStatus = (id, val) => {
-    setTasks((prev) => {
-      const task = prev.find((tk) => tk.id === id);
-      if (!task) return prev;
-      let updated = prev.map((tk) =>
-        tk.id === id ? { ...tk, status: val } : tk
-      );
-      if (val === "done" && task.repeat)
-        updated = [
-          {
-            ...task,
-            id: uid(),
-            status: "todo",
-            createdAt: Date.now(),
-            due: nextDue(task),
-            subtasks: task.subtasks.map((s) => ({ ...s, done: false })),
-          },
-          ...updated,
-        ];
-      return updated;
-    });
+  const changeStatus = async (id, val) => {
+    const task = tasks.find((tk) => tk.id === id);
+    if (!task) return;
+    await setDoc(doc(db, "tasks", id), { ...task, status: val });
+    if (val === "done" && task.repeat) {
+      const newTask = {
+        ...task,
+        id: uid(),
+        status: "todo",
+        createdAt: Date.now(),
+        due: nextDue(task),
+        subtasks: task.subtasks.map((s) => ({ ...s, done: false })),
+      };
+      await setDoc(doc(db, "tasks", newTask.id), newTask);
+    }
     setDetail((prev) => (prev?.id === id ? { ...prev, status: val } : prev));
   };
-  const toggleSub = (tid, sid) => {
-    setTasks((p) =>
-      p.map((tk) =>
-        tk.id === tid
-          ? {
-              ...tk,
-              subtasks: tk.subtasks.map((s) =>
-                s.id === sid ? { ...s, done: !s.done } : s
-              ),
-            }
-          : tk
-      )
-    );
+  const toggleSub = async (tid, sid) => {
+    const task = tasks.find((tk) => tk.id === tid);
+    if (!task) return;
+    const updated = {
+      ...task,
+      subtasks: task.subtasks.map((s) =>
+        s.id === sid ? { ...s, done: !s.done } : s
+      ),
+    };
+    await setDoc(doc(db, "tasks", tid), updated);
     setDetail((prev) =>
       prev?.id === tid
         ? {
@@ -2767,8 +2786,8 @@ export default function App() {
         : prev
     );
   };
-  const delTask = (id) => {
-    setTasks((p) => p.filter((tk) => tk.id !== id));
+  const delTask = async (id) => {
+    await deleteDoc(doc(db, "tasks", id));
     if (detail?.id === id) setDetail(null);
   };
 
