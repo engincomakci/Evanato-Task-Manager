@@ -3388,40 +3388,36 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
       {showNewProject && (
         <div
           className="modal-bg"
-          onClick={() => setShowNewProject(false)}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={(e) => e.target === e.currentTarget && setShowNewProject(false)}
         >
-          <div
-            className="modal-box"
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: 340 }}
-          >
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16, color: t.text }}>Yeni Proje</div>
-            <input
-              className="input"
-              placeholder="Proje adı"
-              value={newProjectName}
-              onChange={(e) => setNewProjectName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleCreateProject(); }}
-              autoFocus
-              style={{ width: "100%", marginBottom: 14 }}
-            />
-            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              {PROJECT_COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setNewProjectColor(c)}
-                  style={{
-                    width: 24, height: 24, borderRadius: "50%", background: c, border: "none",
-                    cursor: "pointer", outline: newProjectColor === c ? `2px solid ${t.text}` : "none",
-                    outlineOffset: 2,
-                  }}
-                />
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn-secondary" onClick={() => setShowNewProject(false)}>İptal</button>
-              <button className="btn-primary" onClick={handleCreateProject}>Kaydet</button>
+          <div className="modal slide-up">
+            <div className="modal-inner">
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16, color: t.text }}>Yeni Proje</div>
+              <input
+                className="input"
+                placeholder="Proje adı"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleCreateProject(); }}
+                autoFocus
+                style={{ width: "100%", marginBottom: 14 }}
+              />
+              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                {PROJECT_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setNewProjectColor(c)}
+                    style={{
+                      width: 24, height: 24, borderRadius: "50%", background: c,
+                      cursor: "pointer", border: newProjectColor === c ? `3px solid ${t.text}` : "3px solid transparent",
+                    }}
+                  />
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button className="btn-secondary" onClick={() => setShowNewProject(false)}>İptal</button>
+                <button className="btn-primary" onClick={handleCreateProject}>Kaydet</button>
+              </div>
             </div>
           </div>
         </div>
