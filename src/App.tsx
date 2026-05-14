@@ -2721,7 +2721,9 @@ export default function App() {
   // Firebase: projects okuma
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "projects"), (snap) => {
-      setProjects(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
+      if (!snap.empty) {
+        setProjects(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
+      }
     });
     return () => unsub();
   }, []);
