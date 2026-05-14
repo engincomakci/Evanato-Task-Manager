@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { db } from "./firebase";
-import { collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDocs } from "firebase/firestore";
+import { collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDocs, query, where } from "firebase/firestore";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const todayStr = () => new Date().toISOString().split("T")[0];
@@ -2689,16 +2689,18 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Firebase: projects
+  // Firebase: projects (per-user)
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "projects"), (snap) => {
+    if (!me) { setProjects([]); return; }
+    const q = query(collection(db, "projects"), where("ownerId", "==", me.id));
+    const unsub = onSnapshot(q, (snap) => {
       setProjects(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
     });
     return () => unsub();
-  }, []);
+  }, [(me as any)?.id]);
 
   const addProject = async (name: string, color: string) => {
-    const p = { id: uid(), name: name.trim(), color, createdAt: Date.now() };
+    const p = { id: uid(), name: name.trim(), color, ownerId: me.id, createdAt: Date.now() };
     await setDoc(doc(db, "projects", p.id), p);
     return p.id;
   };
@@ -2706,16 +2708,18 @@ export default function App() {
     await deleteDoc(doc(db, "projects", pid));
   };
 
-  // Firebase: labels
+  // Firebase: labels (per-user)
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "labels"), (snap) => {
+    if (!me) { setLabels([]); return; }
+    const q = query(collection(db, "labels"), where("ownerId", "==", me.id));
+    const unsub = onSnapshot(q, (snap) => {
       setLabels(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
     });
     return () => unsub();
-  }, []);
+  }, [(me as any)?.id]);
 
   const addLabel = async (name: string, color: string) => {
-    const l = { id: uid(), name: name.trim(), color, createdAt: Date.now() };
+    const l = { id: uid(), name: name.trim(), color, ownerId: me.id, createdAt: Date.now() };
     await setDoc(doc(db, "labels", l.id), l);
     return l.id;
   };
