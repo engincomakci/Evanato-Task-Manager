@@ -2533,6 +2533,8 @@ function TaskList({
   onDelete,
   onDetail,
   onNew,
+  groupByProject = false,
+  projects = [],
 }) {
   const t = dark ? DARK : LIGHT;
   const activeCount = vis.filter(
@@ -2669,40 +2671,183 @@ function TaskList({
           {hideDone ? "Tümünü Göster" : "Bitti/İptal Gizle"}
         </button>
       </div>
-      <div
-        style={{
-          background: t.surface,
-          borderRadius: 12,
-          border: `1px solid ${t.border}`,
-          overflow: "hidden",
-        }}
-      >
-        {vis.length === 0 && (
-          <div
-            style={{
-              padding: "40px 0",
-              textAlign: "center",
-              color: t.textMuted,
-              fontSize: 14,
-            }}
-          >
-            Görev bulunamadı.
-          </div>
-        )}
-        {vis.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            users={users}
-            currentUser={me}
-            dark={dark}
-            onStatusChange={onStatus}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onDetail={onDetail}
-          />
-        ))}
-      </div>
+      {groupByProject ? (
+        <>
+          {projects
+            .filter((p) => vis.some((tk) => tk.projectIds?.includes(p.id)))
+            .map((p) => {
+              const group = vis.filter((tk) => tk.projectIds?.includes(p.id));
+              return (
+                <div key={p.id} style={{ marginBottom: 16 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 6,
+                      paddingLeft: 2,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        background: p.color,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: t.textSub,
+                        letterSpacing: ".02em",
+                      }}
+                    >
+                      {p.name}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: t.textMuted,
+                        fontFamily: "'JetBrains Mono',monospace",
+                      }}
+                    >
+                      {group.length}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      background: t.surface,
+                      borderRadius: 12,
+                      border: `1px solid ${t.border}`,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {group.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        users={users}
+                        currentUser={me}
+                        dark={dark}
+                        onStatusChange={onStatus}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onDetail={onDetail}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          {vis.filter((tk) => !tk.projectIds?.length).length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 6,
+                  paddingLeft: 2,
+                }}
+              >
+                <span
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    background: t.border2,
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: t.textSub,
+                    letterSpacing: ".02em",
+                  }}
+                >
+                  Genel
+                </span>
+              </div>
+              <div
+                style={{
+                  background: t.surface,
+                  borderRadius: 12,
+                  border: `1px solid ${t.border}`,
+                  overflow: "hidden",
+                }}
+              >
+                {vis
+                  .filter((tk) => !tk.projectIds?.length)
+                  .map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      users={users}
+                      currentUser={me}
+                      dark={dark}
+                      onStatusChange={onStatus}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      onDetail={onDetail}
+                    />
+                  ))}
+              </div>
+            </div>
+          )}
+          {vis.length === 0 && (
+            <div
+              style={{
+                padding: "40px 0",
+                textAlign: "center",
+                color: t.textMuted,
+                fontSize: 14,
+              }}
+            >
+              Görev bulunamadı.
+            </div>
+          )}
+        </>
+      ) : (
+        <div
+          style={{
+            background: t.surface,
+            borderRadius: 12,
+            border: `1px solid ${t.border}`,
+            overflow: "hidden",
+          }}
+        >
+          {vis.length === 0 && (
+            <div
+              style={{
+                padding: "40px 0",
+                textAlign: "center",
+                color: t.textMuted,
+                fontSize: 14,
+              }}
+            >
+              Görev bulunamadı.
+            </div>
+          )}
+          {vis.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              users={users}
+              currentUser={me}
+              dark={dark}
+              onStatusChange={onStatus}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onDetail={onDetail}
+            />
+          ))}
+        </div>
+      )}
     </>
   );
 }
@@ -2973,6 +3118,8 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
     onDelete: delTask,
     onDetail: setDetail,
     onNew: () => setModal("new"),
+    groupByProject: navTab === "all" && !selectedProject,
+    projects: visibleProjects,
   };
   // setMe burada da geçiliyor — ayarlardan profil güncellenince me güncellenir
   const settingsProps = { users, setUsers, me, setMe, dark, toggleDark, tasks };
@@ -3188,7 +3335,9 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
                 letterSpacing: "-.3px",
               }}
             >
-              {pageTitle[navTab]}
+              {selectedProject
+                ? visibleProjects.find((p) => p.id === selectedProject)?.name ?? "Proje"
+                : pageTitle[navTab]}
             </h1>
             <div
               style={{
@@ -3273,7 +3422,9 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
                   lineHeight: 1.1,
                 }}
               >
-                {pageTitle[navTab]}
+                {selectedProject
+                  ? visibleProjects.find((p) => p.id === selectedProject)?.name ?? "Proje"
+                  : pageTitle[navTab]}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
