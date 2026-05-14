@@ -2707,6 +2707,12 @@ export default function App() {
   const deleteProject = async (pid: string) => {
     await deleteDoc(doc(db, "projects", pid));
   };
+  const renameProject = async (pid: string, oldName: string) => {
+    const name = prompt("New project name:", oldName);
+    if (!name?.trim() || name.trim() === oldName) return;
+    const proj = projects.find((p) => p.id === pid);
+    if (proj) await setDoc(doc(db, "projects", pid), { ...proj, name: name.trim() });
+  };
 
   // Firebase: labels (per-user)
   useEffect(() => {
@@ -2725,6 +2731,12 @@ export default function App() {
   };
   const deleteLabel = async (lid: string) => {
     await deleteDoc(doc(db, "labels", lid));
+  };
+  const renameLabel = async (lid: string, oldName: string) => {
+    const name = prompt("New label name:", oldName);
+    if (!name?.trim() || name.trim() === oldName) return;
+    const lbl = labels.find((l) => l.id === lid);
+    if (lbl) await setDoc(doc(db, "labels", lid), { ...lbl, name: name.trim() });
   };
   const t = dark ? DARK : LIGHT;
   const toggleDark = () => setDark((d) => { const n = !d; localStorage.setItem('evanato_dark', n ? '1' : '0'); return n; });
@@ -3006,9 +3018,16 @@ export default function App() {
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0, display: "inline-block" }} />
                 <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                 <button
+                  onClick={(e) => { e.stopPropagation(); renameProject(p.id, p.name); }}
+                  style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11, opacity: 0, transition: "opacity .12s" }}
+                  className="del-btn"
+                  title="Rename"
+                >✎</button>
+                <button
                   onClick={(e) => { e.stopPropagation(); if (window.confirm(`Delete project "${p.name}"?`)) deleteProject(p.id); }}
                   style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11, opacity: 0, transition: "opacity .12s" }}
                   className="del-btn"
+                  title="Delete"
                 >✕</button>
                 <span style={{ fontSize: 10, color: t.textMuted, fontFamily: "'JetBrains Mono',monospace" }}>
                   {tasks.filter((tk) => tk.projectId === p.id || (!tk.projectId && tk.tags?.includes(p.name))).length}
@@ -3034,8 +3053,14 @@ export default function App() {
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: lb.color, flexShrink: 0, display: "inline-block" }} />
                 <span style={{ flex: 1, fontSize: 13, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lb.name}</span>
                 <button
+                  onClick={() => renameLabel(lb.id, lb.name)}
+                  style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11 }}
+                  title="Rename"
+                >✎</button>
+                <button
                   onClick={() => { if (window.confirm(`Delete label "${lb.name}"?`)) deleteLabel(lb.id); }}
                   style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11 }}
+                  title="Delete"
                 >✕</button>
               </div>
             ))}
