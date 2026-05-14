@@ -2808,6 +2808,21 @@ export default function App() {
         : prev
     );
   };
+  const createProject = async (name: string, color: string) => {
+    const p = { id: uid(), name, color, createdAt: Date.now(), ownerId: me.id };
+    setProjects((prev) => [...prev, p]);
+    await setDoc(doc(db, "projects", p.id), p);
+  };
+  const deleteProject = async (pid: string) => {
+    setProjects((prev) => prev.filter((p) => p.id !== pid));
+    await deleteDoc(doc(db, "projects", pid));
+    const affected = tasks.filter((tk) => tk.projectIds?.includes(pid));
+    for (const tk of affected) {
+      const updated = { ...tk, projectIds: tk.projectIds.filter((x) => x !== pid) };
+      setTasks((prev) => prev.map((t) => (t.id === tk.id ? updated : t)));
+      await setDoc(doc(db, "tasks", tk.id), updated);
+    }
+  };
   const delTask = async (id) => {
     await deleteDoc(doc(db, "tasks", id));
     if (detail?.id === id) setDetail(null);
