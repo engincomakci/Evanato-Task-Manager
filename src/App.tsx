@@ -2540,6 +2540,7 @@ function TaskList({
   const activeCount = vis.filter(
     (t) => !["done", "cancelled"].includes(t.status)
   ).length;
+  const genelTasks = vis.filter((tk) => !tk.projectIds?.length);
   return (
     <>
       <div
@@ -2742,7 +2743,7 @@ function TaskList({
                 </div>
               );
             })}
-          {vis.filter((tk) => !tk.projectIds?.length).length > 0 && (
+          {genelTasks.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <div
                 style={{
@@ -2779,7 +2780,7 @@ function TaskList({
                     fontFamily: "'JetBrains Mono',monospace",
                   }}
                 >
-                  {vis.filter((tk) => !tk.projectIds?.length).length}
+                  {genelTasks.length}
                 </span>
               </div>
               <div
@@ -2790,21 +2791,19 @@ function TaskList({
                   overflow: "hidden",
                 }}
               >
-                {vis
-                  .filter((tk) => !tk.projectIds?.length)
-                  .map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      users={users}
-                      currentUser={me}
-                      dark={dark}
-                      onStatusChange={onStatus}
-                      onEdit={onEdit}
-                      onDelete={onDelete}
-                      onDetail={onDetail}
-                    />
-                  ))}
+                {genelTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    users={users}
+                    currentUser={me}
+                    dark={dark}
+                    onStatusChange={onStatus}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onDetail={onDetail}
+                  />
+                ))}
               </div>
             </div>
           )}
