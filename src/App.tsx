@@ -2725,6 +2725,9 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [hideDone, setHideDone] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
+const [showNewProject, setShowNewProject] = useState(false);
+const [newProjectName, setNewProjectName] = useState("");
+const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
 
   injectCss(dark);
 
@@ -2781,6 +2784,14 @@ export default function App() {
 
   // Çıkış: me'yi null yap, ama users state'i korunur
   const handleLogout = () => setMe(null);
+
+  const handleCreateProject = async () => {
+    if (!newProjectName.trim()) return;
+    await createProject(newProjectName.trim(), newProjectColor);
+    setNewProjectName("");
+    setNewProjectColor(PROJECT_COLORS[0]);
+    setShowNewProject(false);
+  };
 
   // Login: users state'inden bul
   const handleLogin = (u) => setMe(u);
@@ -2936,6 +2947,12 @@ export default function App() {
     settings: "Ayarlar",
   };
 
+  const visibleProjects = projects.filter(
+    (p) =>
+      p.ownerId === me.id ||
+      tasks.some((tk) => tk.projectIds?.includes(p.id) && tk.assigneeId === me.id)
+  );
+
   const listProps = {
     vis,
     users,
@@ -3059,6 +3076,37 @@ export default function App() {
               <span>{n.label}</span>
             </button>
           ))}
+          {/* Projeler bölümü */}
+          <div style={{ marginTop: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", marginBottom: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: t.textMuted }}>Projeler</span>
+              <button className="btn-icon" style={{ fontSize: 16, color: t.textMuted }} onClick={() => setShowNewProject(true)}>+</button>
+            </div>
+            {visibleProjects.map((p) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center" }}>
+                <button
+                  className={`sidebar-item${selectedProject === p.id ? " active" : ""}`}
+                  style={{ flex: 1 }}
+                  onClick={() => { setSelectedProject(p.id); setNavTab("all"); }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                  <span>{p.name}</span>
+                </button>
+                <button
+                  className="btn-icon"
+                  style={{ fontSize: 12, color: t.textMuted, paddingRight: 8 }}
+                  onClick={() => {
+                    if (window.confirm(`"${p.name}" projesini silmek istiyor musun?`))
+                      deleteProject(p.id);
+                    if (selectedProject === p.id) setSelectedProject(null);
+                  }}
+                >✕</button>
+              </div>
+            ))}
+            {visibleProjects.length === 0 && (
+              <div style={{ padding: "8px 12px", fontSize: 12, color: t.textMuted }}>Henüz proje yok.</div>
+            )}
+          </div>
           <div style={{ flex: 1 }} />
           <div
             style={{
@@ -3334,8 +3382,49 @@ export default function App() {
           onSave={handleSave}
           onClose={() => setModal(null)}
           dark={dark}
-          projects={projects}
+          projects={visibleProjects}
         />
+      )}
+      {showNewProject && (
+        <div
+          className="modal-bg"
+          onClick={() => setShowNewProject(false)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <div
+            className="modal-box"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: 340 }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16, color: t.text }}>Yeni Proje</div>
+            <input
+              className="input"
+              placeholder="Proje adı"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleCreateProject(); }}
+              autoFocus
+              style={{ width: "100%", marginBottom: 14 }}
+            />
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              {PROJECT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setNewProjectColor(c)}
+                  style={{
+                    width: 24, height: 24, borderRadius: "50%", background: c, border: "none",
+                    cursor: "pointer", outline: newProjectColor === c ? `2px solid ${t.text}` : "none",
+                    outlineOffset: 2,
+                  }}
+                />
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn-secondary" onClick={() => setShowNewProject(false)}>İptal</button>
+              <button className="btn-primary" onClick={handleCreateProject}>Kaydet</button>
+            </div>
+          </div>
+        </div>
       )}
       {detail && (
         <TaskDetail
