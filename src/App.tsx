@@ -192,6 +192,7 @@ input,select,textarea,button{font-family:'IBM Plex Sans',sans-serif;}
 @media(hover:none){.del-btn{opacity:1;}}
 .del-btn{opacity:0;transition:opacity .12s;}
 @media(hover:hover){.task-row:hover .del-btn{opacity:1;}}
+@media(hover:hover){.sidebar-item:hover .del-btn{opacity:1;}}
 @media(hover:none){.del-btn{opacity:1;}}
 .pill{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600;letter-spacing:.03em;white-space:nowrap;font-family:'JetBrains Mono',monospace;}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;z-index:200;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
@@ -3048,18 +3049,21 @@ export default function App() {
             {labelsOpen && labels.map((lb: any) => (
               <div
                 key={lb.id}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 12px", borderRadius: 8 }}
+                className="sidebar-item"
+                style={{ display: "flex", alignItems: "center", gap: 8, cursor: "default" }}
               >
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: lb.color, flexShrink: 0, display: "inline-block" }} />
                 <span style={{ flex: 1, fontSize: 13, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lb.name}</span>
                 <button
                   onClick={() => renameLabel(lb.id, lb.name)}
                   style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11 }}
+                  className="del-btn"
                   title="Rename"
                 >✎</button>
                 <button
                   onClick={() => { if (window.confirm(`Delete label "${lb.name}"?`)) deleteLabel(lb.id); }}
                   style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11 }}
+                  className="del-btn"
                   title="Delete"
                 >✕</button>
               </div>
