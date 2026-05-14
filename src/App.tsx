@@ -2772,6 +2772,15 @@ function TaskList({
                 >
                   Genel
                 </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: t.textMuted,
+                    fontFamily: "'JetBrains Mono',monospace",
+                  }}
+                >
+                  {vis.filter((tk) => !tk.projectIds?.length).length}
+                </span>
               </div>
               <div
                 style={{
