@@ -2448,33 +2448,30 @@ function TaskList({
 
   // Build groups
   const groupsMap: Record<string, { tasks: any[]; color: string; label: string }> = {};
+  const addToGroup = (key: string, label: string, color: string, task: any) => {
+    if (!groupsMap[key]) groupsMap[key] = { tasks: [], color, label };
+    groupsMap[key].tasks.push(task);
+  };
   vis.forEach((task) => {
-    let key: string;
-    let label: string;
-    let color: string;
     if (groupBy === "project") {
       const proj = (projects || []).find((p) => p.id === task.projectId);
       if (proj) {
-        key = task.projectId;
-        label = proj.name;
-        color = proj.color;
+        addToGroup(task.projectId, proj.name, proj.color, task);
       } else if (task.tags && task.tags.length > 0) {
-        // fallback: no projectId assigned yet, use first tag as implicit group
-        key = "tag_" + task.tags[0];
-        label = task.tags[0];
-        color = labelColor(task.tags[0]);
+        addToGroup("tag_" + task.tags[0], task.tags[0], labelColor(task.tags[0]), task);
       } else {
-        key = "__none__";
-        label = "Unassigned";
-        color = t.textMuted;
+        addToGroup("__none__", "Unassigned", t.textMuted, task);
       }
     } else {
-      key = task.tags && task.tags.length > 0 ? task.tags[0] : "__none__";
-      label = task.tags && task.tags.length > 0 ? task.tags[0] : "Untagged";
-      color = labelColor(label);
+      // By Label: task appears under EACH of its tags
+      if (task.tags && task.tags.length > 0) {
+        task.tags.forEach((tag: string) => {
+          addToGroup(tag, tag, labelColor(tag), task);
+        });
+      } else {
+        addToGroup("__none__", "Untagged", t.textMuted, task);
+      }
     }
-    if (!groupsMap[key]) groupsMap[key] = { tasks: [], color, label };
-    groupsMap[key].tasks.push(task);
   });
   const entries = Object.entries(groupsMap);
 
@@ -3010,30 +3007,30 @@ export default function App() {
           <div style={{ marginTop: 16 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, letterSpacing: ".1em", textTransform: "uppercase", padding: "0 12px", marginBottom: 4 }}>Projects</div>
             {projects.map((p) => (
-              <button
+              <div
                 key={p.id}
                 className={`sidebar-item${navTab === "project" && filterProject === p.id ? " active" : ""}`}
                 onClick={() => { setNavTab("project"); setFP(p.id); }}
-                style={{ gap: 8 }}
+                style={{ gap: 8, cursor: "pointer" }}
               >
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0, display: "inline-block" }} />
                 <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); renameProject(p.id, p.name); }}
-                  style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11, opacity: 0, transition: "opacity .12s" }}
+                  style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11 }}
                   className="del-btn"
                   title="Rename"
                 >✎</button>
                 <button
                   onClick={(e) => { e.stopPropagation(); if (window.confirm(`Delete project "${p.name}"?`)) deleteProject(p.id); }}
-                  style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11, opacity: 0, transition: "opacity .12s" }}
+                  style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11 }}
                   className="del-btn"
                   title="Delete"
                 >✕</button>
                 <span style={{ fontSize: 10, color: t.textMuted, fontFamily: "'JetBrains Mono',monospace" }}>
                   {tasks.filter((tk) => tk.projectId === p.id || (!tk.projectId && tk.tags?.includes(p.name))).length}
                 </span>
-              </button>
+              </div>
             ))}
           </div>
 
