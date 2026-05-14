@@ -18,34 +18,33 @@ const addMonths = (dateStr, m) => {
 
 const PRIORITIES = ["Low", "Medium", "High"];
 const STATUSES = [
-  { value: "todo", label: "Bekliyor", emoji: "○", color: "#6b7280" },
-  { value: "inprogress", label: "Devam Ediyor", emoji: "◑", color: "#3b82f6" },
-  { value: "review", label: "İncelemede", emoji: "◈", color: "#f59e0b" },
-  { value: "done", label: "Tamamlandı", emoji: "●", color: "#10b981" },
-  { value: "cancelled", label: "İptal", emoji: "✕", color: "#ef4444" },
+  { value: "todo", label: "To Do", emoji: "○", color: "#6b7280" },
+  { value: "inprogress", label: "In Progress", emoji: "◑", color: "#3b82f6" },
+  { value: "review", label: "In Review", emoji: "◈", color: "#f59e0b" },
+  { value: "done", label: "Done", emoji: "●", color: "#10b981" },
+  { value: "cancelled", label: "Cancelled", emoji: "✕", color: "#ef4444" },
 ];
 const statusMap = Object.fromEntries(STATUSES.map((s) => [s.value, s]));
-const PROJECT_COLORS = [
-  "#3b82f6", "#8b5cf6", "#ef4444", "#10b981",
-  "#f59e0b", "#0ea5e9", "#f97316", "#ec4899",
-];
-const CATEGORIES = ["Kişisel", "Acil", "Proje", "Toplantı", "Vize", "Eğitim", "Satış Fırsatı", "Diğer"];
+const CATEGORIES = ["Work", "Personal", "Urgent", "Project", "Meeting", "Other"];
 const CAT_COLOR = {
-  Kişisel: "#8b5cf6",
-  Acil: "#ef4444",
-  Proje: "#10b981",
-  Toplantı: "#f59e0b",
-  Vize: "#0ea5e9",
-  Eğitim: "#f97316",
-  "Satış Fırsatı": "#22c55e",
-  Diğer: "#6b7280",
+  Work: "#3b82f6",
+  Personal: "#8b5cf6",
+  Urgent: "#ef4444",
+  Project: "#10b981",
+  Meeting: "#f59e0b",
+  Other: "#6b7280",
 };
 const REPEAT_OPTIONS = [
-  { value: "", label: "Tekrar yok" },
-  { value: "daily", label: "Her gün" },
-  { value: "weekly", label: "Her hafta" },
-  { value: "biweekly", label: "2 haftada bir" },
-  { value: "monthly", label: "Her ay" },
+  { value: "", label: "No repeat" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Bi-weekly" },
+  { value: "monthly", label: "Monthly" },
+];
+const PROJECT_COLORS = [
+  "#ef4444","#f59e0b","#10b981","#3b82f6",
+  "#8b5cf6","#ec4899","#14b8a6","#f97316",
+  "#6366f1","#84cc16",
 ];
 
 // Sabit seed — sadece useState'in başlangıç değeri olarak kullanılır
@@ -79,7 +78,6 @@ const mkTask = (o) => ({
   ownerId: "u1",
   createdAt: Date.now(),
   subtasks: [],
-  projectIds: [],
   tags: [],
   links: [],
   files: [],
@@ -88,6 +86,7 @@ const mkTask = (o) => ({
   due: todayStr(),
   priority: "Medium",
   assigneeId: "u1",
+  projectId: "",
   ...o,
 });
 const SEED_TASKS = [
@@ -98,7 +97,7 @@ const SEED_TASKS = [
     status: "inprogress",
     due: "2026-03-20",
     note: "Figma linki paylaşıldı",
-    tags: ["Proje"],
+    tags: ["İş", "Proje"],
     links: [{ id: uid(), url: "https://figma.com", label: "Figma Dosyası" }],
     subtasks: [
       { id: uid(), text: "Wireframe", done: true },
@@ -111,7 +110,7 @@ const SEED_TASKS = [
     priority: "Medium",
     status: "todo",
     due: "2026-03-14",
-    tags: ["Toplantı"],
+    tags: ["İş", "Toplantı"],
     repeat: "weekly",
   }),
   mkTask({
@@ -120,7 +119,7 @@ const SEED_TASKS = [
     priority: "High",
     status: "review",
     due: "2026-03-18",
-    tags: ["Proje"],
+    tags: ["İş", "Proje"],
   }),
   mkTask({
     title: "Alışveriş listesi",
@@ -185,9 +184,12 @@ input,select,textarea,button{font-family:'IBM Plex Sans',sans-serif;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 .slide-up{animation:slideUp .26s cubic-bezier(.32,1,.28,1);}
 @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
-.task-row{transition:background .1s;border-bottom:1px solid ${t.border};}
-.task-row:last-child{border-bottom:none;}
-@media(hover:hover){.task-row:hover{background:${t.surface2}55;}}
+.task-row{transition:background .1s;}
+.kanban-card{background:${t.surface};border:1px solid ${t.border};border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);transition:box-shadow .15s,background .1s;}
+@media(hover:hover){.kanban-card:hover{box-shadow:0 3px 10px rgba(0,0,0,.12);background:${t.surface2};}}
+.del-btn{opacity:0;transition:opacity .12s;}
+@media(hover:hover){.kanban-card:hover .del-btn{opacity:1;}}
+@media(hover:none){.del-btn{opacity:1;}}
 .del-btn{opacity:0;transition:opacity .12s;}
 @media(hover:hover){.task-row:hover .del-btn{opacity:1;}}
 @media(hover:none){.del-btn{opacity:1;}}
@@ -254,7 +256,7 @@ input,select,textarea,button{font-family:'IBM Plex Sans',sans-serif;}
   .sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;border:none;background:transparent;font-size:14px;font-weight:500;color:${t.textSub};transition:all .15s;width:100%;text-align:left;}
   .sidebar-item:hover{background:${t.surface2};color:${t.text};}
   .sidebar-item.active{background:${t.accentBg};color:${t.accent};font-weight:600;}
-  .main-content{flex:1;min-width:0;max-width:760px;padding:24px 28px;}
+  .main-content{flex:1;min-width:0;max-width:1400px;padding:24px 28px;}
 }
 .settings-section{background:${t.surface};border:1px solid ${t.border};border-radius:12px;overflow:hidden;margin-bottom:16px;}
 .settings-row{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid ${t.border};gap:12px;}
@@ -471,11 +473,11 @@ function SettingsScreen({
 
   const saveEdit = async () => {
     if (!editName.trim() || !editEmail.trim())
-      return setEditErr("Ad ve e-posta zorunlu.");
+      return setEditErr("Name and email are required.");
     if (
       users.find((u) => u.email === editEmail.trim() && u.id !== editingUser.id)
     )
-      return setEditErr("Bu e-posta başka kullanıcıda mevcut.");
+      return setEditErr("This email is already in use.");
 
     const updatedUser = {
       ...editingUser,
@@ -487,14 +489,14 @@ function SettingsScreen({
     await setDoc(doc(db, "users", updatedUser.id), updatedUser);
     if (me.id === editingUser.id) setMe(updatedUser);
     setEditingUser(null);
-    showToast("Kullanıcı güncellendi.");
+    showToast("User updated.");
   };
 
   const doAddUser = async () => {
     if (!newName.trim() || !newEmail.trim() || !newPw.trim())
-      return setNewErr("Tüm alanlar zorunlu.");
+      return setNewErr("All fields are required.");
     if (users.find((u) => u.email === newEmail.trim()))
-      return setNewErr("Bu e-posta zaten kayıtlı.");
+      return setNewErr("This email is already registered.");
     const u = {
       id: uid(),
       name: newName.trim(),
@@ -509,20 +511,20 @@ function SettingsScreen({
     setNewRole("member");
     setNewErr("");
     setAddingUser(false);
-    showToast("Kullanıcı eklendi.");
+    showToast("User added.");
   };
 
   const doDeleteUser = async (id) => {
     await deleteDoc(doc(db, "users", id));
     setConfirmDelete(null);
-    showToast("Kullanıcı silindi.", "danger");
+    showToast("User deleted.", "danger");
   };
 
   const saveProfile = async () => {
     if (!profName.trim() || !profEmail.trim())
-      return setProfErr("Ad ve e-posta zorunlu.");
+      return setProfErr("Name and email are required.");
     if (users.find((u) => u.email === profEmail.trim() && u.id !== me.id))
-      return setProfErr("Bu e-posta başka kullanıcıda mevcut.");
+      return setProfErr("This email is already in use.");
 
     const updatedMe = {
       ...me,
@@ -534,15 +536,15 @@ function SettingsScreen({
     setMe(updatedMe);
     setProfPw("");
     setProfErr("");
-    showToast("Profilin güncellendi.");
+    showToast("Profile updated.");
   };
 
   const taskCountFor = (uid) =>
     tasks.filter((t) => t.assigneeId === uid).length;
   const TABS = [
-    { k: "users", l: "Kullanıcılar" },
-    { k: "profile", l: "Profilim" },
-    { k: "system", l: "Sistem" },
+    { k: "users", l: "Users" },
+    { k: "profile", l: "Profile" },
+    { k: "system", l: "System" },
   ];
 
   return (
@@ -577,7 +579,7 @@ function SettingsScreen({
             letterSpacing: "-.3px",
           }}
         >
-          Ayarlar
+          Settings
         </h1>
         <div
           style={{
@@ -587,7 +589,7 @@ function SettingsScreen({
             marginTop: 2,
           }}
         >
-          Kullanıcılar ve sistem ayarları
+          Users and system settings
         </div>
       </div>
 
@@ -624,7 +626,7 @@ function SettingsScreen({
                 color: t.textSub,
               }}
             >
-              ℹ️ Kullanıcı yönetimi için admin yetkisi gereklidir.
+              ℹ️ Admin permission required to manage users.
             </div>
           )}
           <div
@@ -642,7 +644,7 @@ function SettingsScreen({
                 fontFamily: "'JetBrains Mono',monospace",
               }}
             >
-              {users.length} kullanıcı
+              {users.length} users
             </span>
             {me.role === "admin" && (
               <button
@@ -659,7 +661,7 @@ function SettingsScreen({
                   padding: "7px 14px",
                 }}
               >
-                + Kullanıcı Ekle
+                + Add User
               </button>
             )}
           </div>
@@ -683,42 +685,42 @@ function SettingsScreen({
                   marginBottom: 14,
                 }}
               >
-                Yeni Kullanıcı
+                New User
               </div>
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
               >
                 <div>
-                  <span className="lbl">Ad Soyad</span>
+                  <span className="lbl">Full Name</span>
                   <input
                     className="input-field"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Ad Soyad"
+                    placeholder="Full Name"
                   />
                 </div>
                 <div>
-                  <span className="lbl">E-Posta</span>
+                  <span className="lbl">Email</span>
                   <input
                     className="input-field"
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="email@ornek.com"
+                    placeholder="email@example.com"
                   />
                 </div>
                 <div>
-                  <span className="lbl">Şifre</span>
+                  <span className="lbl">Password</span>
                   <input
                     className="input-field"
                     type="password"
                     value={newPw}
                     onChange={(e) => setNewPw(e.target.value)}
-                    placeholder="Şifre belirle"
+                    placeholder="Set password"
                   />
                 </div>
                 <div>
-                  <span className="lbl">Rol</span>
+                  <span className="lbl">Role</span>
                   <select
                     className="input-field"
                     value={newRole}
@@ -747,14 +749,14 @@ function SettingsScreen({
                     onClick={doAddUser}
                     style={{ flex: 1 }}
                   >
-                    Ekle
+                    Add
                   </button>
                   <button
                     className="btn-secondary"
                     onClick={() => setAddingUser(false)}
                     style={{ width: "auto", padding: "10px 16px" }}
                   >
-                    İptal
+                    Cancel
                   </button>
                 </div>
               </div>
@@ -833,7 +835,7 @@ function SettingsScreen({
                         fontFamily: "'JetBrains Mono',monospace",
                       }}
                     >
-                      {taskCountFor(u.id)} görev
+                      {taskCountFor(u.id)} tasks
                     </span>
                   </div>
                 </div>
@@ -912,7 +914,7 @@ function SettingsScreen({
                 style={{ display: "flex", flexDirection: "column", gap: 12 }}
               >
                 <div>
-                  <span className="lbl">Ad Soyad</span>
+                  <span className="lbl">Full Name</span>
                   <input
                     className="input-field"
                     value={profName}
@@ -920,7 +922,7 @@ function SettingsScreen({
                   />
                 </div>
                 <div>
-                  <span className="lbl">E-Posta</span>
+                  <span className="lbl">Email</span>
                   <input
                     className="input-field"
                     type="email"
@@ -929,13 +931,13 @@ function SettingsScreen({
                   />
                 </div>
                 <div>
-                  <span className="lbl">Yeni Şifre</span>
+                  <span className="lbl">New Password</span>
                   <input
                     className="input-field"
                     type="password"
                     value={profPw}
                     onChange={(e) => setProfPw(e.target.value)}
-                    placeholder="Değiştirmek için gir (opsiyonel)"
+                    placeholder="Enter to change (optional)"
                   />
                 </div>
                 {profErr && (
@@ -952,7 +954,7 @@ function SettingsScreen({
                   </div>
                 )}
                 <button className="btn-primary" onClick={saveProfile}>
-                  Kaydet
+                  Save
                 </button>
               </div>
             </div>
@@ -978,10 +980,10 @@ function SettingsScreen({
             <div className="settings-row">
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
-                  Tema
+                  Theme
                 </div>
                 <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>
-                  Görünüm modunu değiştir
+                  Dark mode
                 </div>
               </div>
               <button
@@ -1087,7 +1089,7 @@ function SettingsScreen({
                   <span
                     style={{ fontSize: 16, fontWeight: 700, color: t.text }}
                   >
-                    Kullanıcıyı Düzenle
+                    Edit User
                   </span>
                 </div>
                 <button
@@ -1101,7 +1103,7 @@ function SettingsScreen({
                 style={{ display: "flex", flexDirection: "column", gap: 12 }}
               >
                 <div>
-                  <span className="lbl">Ad Soyad</span>
+                  <span className="lbl">Full Name</span>
                   <input
                     className="input-field"
                     value={editName}
@@ -1109,7 +1111,7 @@ function SettingsScreen({
                   />
                 </div>
                 <div>
-                  <span className="lbl">E-Posta</span>
+                  <span className="lbl">Email</span>
                   <input
                     className="input-field"
                     type="email"
@@ -1118,17 +1120,17 @@ function SettingsScreen({
                   />
                 </div>
                 <div>
-                  <span className="lbl">Yeni Şifre</span>
+                  <span className="lbl">New Password</span>
                   <input
                     className="input-field"
                     type="password"
                     value={editPw}
                     onChange={(e) => setEditPw(e.target.value)}
-                    placeholder="Boş bırakırsan değişmez"
+                    placeholder="Leave blank to keep unchanged"
                   />
                 </div>
                 <div>
-                  <span className="lbl">Rol</span>
+                  <span className="lbl">Role</span>
                   <select
                     className="input-field"
                     value={editRole}
@@ -1142,7 +1144,7 @@ function SettingsScreen({
                     <div
                       style={{ fontSize: 11, color: t.textMuted, marginTop: 4 }}
                     >
-                      Kendi rolünü değiştiremezsin.
+                      You cannot change your own role.
                     </div>
                   )}
                 </div>
@@ -1165,14 +1167,14 @@ function SettingsScreen({
                     onClick={saveEdit}
                     style={{ flex: 1 }}
                   >
-                    Kaydet
+                    Save
                   </button>
                   <button
                     className="btn-secondary"
                     onClick={() => setEditingUser(null)}
                     style={{ width: "auto", padding: "10px 16px" }}
                   >
-                    İptal
+                    Cancel
                   </button>
                 </div>
               </div>
@@ -1210,16 +1212,16 @@ function SettingsScreen({
                     marginBottom: 8,
                   }}
                 >
-                  Kullanıcıyı sil?
+                  Delete user?
                 </div>
                 <div
                   style={{ fontSize: 13, color: t.textSub, lineHeight: 1.6 }}
                 >
-                  <strong>{confirmDelete.name}</strong> kalıcı olarak silinecek.
+                  <strong>{confirmDelete.name}</strong> will be permanently deleted.
                   <br />
-                  Bu kullanıcıya atanmış{" "}
-                  <strong>{taskCountFor(confirmDelete.id)}</strong> görev
-                  etkilenebilir.
+                  Assigned tasks:{" "}
+                  <strong>{taskCountFor(confirmDelete.id)}</strong>{" "}
+                  (tasks may be affected)
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -1228,14 +1230,14 @@ function SettingsScreen({
                   onClick={() => doDeleteUser(confirmDelete.id)}
                   style={{ flex: 1 }}
                 >
-                  Evet, Sil
+                  Delete
                 </button>
                 <button
                   className="btn-secondary"
                   onClick={() => setConfirmDelete(null)}
                   style={{ flex: 1 }}
                 >
-                  İptal
+                  Cancel
                 </button>
               </div>
             </div>
@@ -1259,16 +1261,16 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
 
   const doLogin = () => {
     const u = users.find((u) => u.email === email && u.password === pw);
-    if (!u) return setErr("E-posta veya şifre hatalı.");
+    if (!u) return setErr("Invalid email or password.");
     onLogin(u);
   };
   const doReg = async () => {
     if (!name.trim() || !email.trim() || !pw.trim())
-      return setErr("Tüm alanlar zorunlu.");
+      return setErr("All fields are required.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-      return setErr("Geçerli bir e-posta adresi gir.");
+      return setErr("Please enter a valid email address.");
     if (users.find((u) => u.email === email))
-      return setErr("Bu e-posta zaten kayıtlı.");
+      return setErr("This email is already registered.");
     const u = {
       id: uid(),
       name: name.trim(),
@@ -1389,7 +1391,7 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
             Task Manager
           </div>
           <div style={{ fontSize: 14, color: t.textSub, marginTop: 6 }}>
-            Görevleri yönet, delege et, takip et.
+            Manage, delegate, and track tasks.
           </div>
         </div>
         <div
@@ -1430,25 +1432,25 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
                   boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,.12)" : "none",
                 }}
               >
-                {m === "login" ? "Giriş" : "Kayıt Ol"}
+                {m === "login" ? "Login" : "Register"}
               </button>
             ))}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {mode === "register" && (
               <div>
-                <span className="lbl">Ad Soyad</span>
+                <span className="lbl">Full Name</span>
                 <input
                   className="input-field"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Adınız Soyadınız"
+                  placeholder="Your Full Name"
                   autoComplete="name"
                 />
               </div>
             )}
             <div>
-              <span className="lbl">E-Posta</span>
+              <span className="lbl">Email</span>
               <input
                 className="input-field"
                 type="email"
@@ -1460,7 +1462,7 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
               />
             </div>
             <div>
-              <span className="lbl">Şifre</span>
+              <span className="lbl">Password</span>
               <input
                 className="input-field"
                 type="password"
@@ -1494,7 +1496,7 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
               style={{ marginTop: 2 }}
               onClick={mode === "login" ? doLogin : doReg}
             >
-              {mode === "login" ? "Giriş Yap" : "Hesap Oluştur"}
+              {mode === "login" ? "Log In" : "Create Account"}
             </button>
           </div>
         </div>
@@ -1516,8 +1518,8 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
               }}
             >
               {showDemo
-                ? "▲ demo hesapları gizle"
-                : "▼ demo hesaplarını göster"}
+                ? "▲ hide demo accounts"
+                : "▼ show demo accounts"}
             </button>
             {showDemo && (
               <div
@@ -1533,7 +1535,7 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
                 <div
                   style={{ fontSize: 11, color: t.textMuted, marginBottom: 8 }}
                 >
-                  // {users.length} kullanıcı · şifre değişmediyse: 123
+                  // {users.length} users · default password: 123
                 </div>
                 {users.map((u) => (
                   <button
@@ -1573,7 +1575,7 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
 }
 
 // ── Task Modal ────────────────────────────────────────────
-function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects = [] }) {
+function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects, onAddProject, labels, onAddLabel, onDeleteLabel }) {
   const t = dark ? DARK : LIGHT;
   const [title, setTitle] = useState(task?.title || "");
   const [assigneeId, setAss] = useState(task?.assigneeId || currentUser.id);
@@ -1583,14 +1585,17 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
   const [note, setNote] = useState(task?.note || "");
   const [repeat, setRepeat] = useState(task?.repeat || "");
   const [tags, setTags] = useState(task?.tags || []);
+  const [projectId, setProjectId] = useState(task?.projectId || "");
   const [subtasks, setSubs] = useState(task?.subtasks || []);
-  const [projectIds, setProjectIds] = useState<string[]>(task?.projectIds || []);
   const [links, setLinks] = useState(task?.links || []);
   const [files, setFiles] = useState(task?.files || []);
   const [newSub, setNewSub] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newLbl, setNewLbl] = useState("");
   const [tab, setTab] = useState("basic");
+  const [newProjName, setNewProjName] = useState("");
+  const [newProjColor, setNewProjColor] = useState(PROJECT_COLORS[3]);
+  const [addingProj, setAddingProj] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const toggleTag = (tag) =>
@@ -1636,18 +1641,25 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
       note,
       repeat,
       tags,
+      projectId,
       subtasks,
       links,
       files,
-      projectIds,
     });
   };
+  const handleAddProject = async () => {
+    if (!newProjName.trim()) return;
+    const id = await onAddProject(newProjName, newProjColor);
+    setProjectId(id);
+    setAddingProj(false);
+    setNewProjName("");
+  };
   const TABS = [
-    { k: "basic", l: "Temel" },
-    { k: "sub", l: `Alt${subtasks.length ? ` (${subtasks.length})` : ""}` },
+    { k: "basic", l: "Basic" },
+    { k: "sub", l: `Subtasks${subtasks.length ? ` (${subtasks.length})` : ""}` },
     {
       k: "files",
-      l: `Dosya${
+      l: `Files${
         links.length + files.length ? ` (${links.length + files.length})` : ""
       }`,
     },
@@ -1679,7 +1691,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
             }}
           >
             <span style={{ fontSize: 17, fontWeight: 700, color: t.text }}>
-              {task ? "Görevi Düzenle" : "Yeni Görev"}
+              {task ? "Edit Task" : "New Task"}
             </span>
             <button className="btn-icon" onClick={onClose}>
               ✕
@@ -1705,17 +1717,17 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
           {tab === "basic" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
-                <span className="lbl">Başlık *</span>
+                <span className="lbl">Title *</span>
                 <input
                   className="input-field"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Görevi tanımla..."
+                  placeholder="Describe the task..."
                   autoFocus
                 />
               </div>
               <div>
-                <span className="lbl">Statü</span>
+                <span className="lbl">Status</span>
                 <div
                   style={{
                     display: "flex",
@@ -1752,7 +1764,44 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                 </div>
               </div>
               <div>
-                <span className="lbl">Atanan</span>
+                <span className="lbl">Project</span>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <select
+                    className="input-field"
+                    value={projectId}
+                    onChange={(e) => {
+                      if (e.target.value === "__new__") setAddingProj(true);
+                      else setProjectId(e.target.value);
+                    }}
+                    style={{ flex: 1 }}
+                  >
+                    <option value="">— No project —</option>
+                    {(projects || []).map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                    <option value="__new__">+ New project…</option>
+                  </select>
+                  {projectId && (
+                    <span style={{ width: 12, height: 12, borderRadius: "50%", background: (projects || []).find((p) => p.id === projectId)?.color || "#aaa", flexShrink: 0, display: "inline-block" }} />
+                  )}
+                </div>
+                {addingProj && (
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6, background: t.surface2, borderRadius: 10, padding: 12 }}>
+                    <input className="input-sm" value={newProjName} onChange={(e) => setNewProjName(e.target.value)} placeholder="Project name…" autoFocus onKeyDown={(e) => e.key === "Enter" && handleAddProject()} />
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {PROJECT_COLORS.map((c) => (
+                        <button key={c} onClick={() => setNewProjColor(c)} style={{ width: 22, height: 22, borderRadius: "50%", background: c, border: newProjColor === c ? `2px solid ${t.text}` : "2px solid transparent", cursor: "pointer" }} />
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn-primary" style={{ flex: 1, padding: "8px" }} onClick={handleAddProject}>Add</button>
+                      <button className="btn-secondary" style={{ padding: "8px 14px" }} onClick={() => setAddingProj(false)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div>
+                <span className="lbl">Assignee</span>
                 <select
                   className="input-field"
                   value={assigneeId}
@@ -1761,7 +1810,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                   {users.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.name}
-                      {u.id === currentUser.id ? " (Ben)" : ""}
+                      {u.id === currentUser.id ? " (Me)" : ""}
                     </option>
                   ))}
                 </select>
@@ -1774,7 +1823,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                 }}
               >
                 <div>
-                  <span className="lbl">Öncelik</span>
+                  <span className="lbl">Priority</span>
                   <select
                     className="input-field"
                     value={priority}
@@ -1788,7 +1837,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                   </select>
                 </div>
                 <div>
-                  <span className="lbl">Teslim</span>
+                  <span className="lbl">Due Date</span>
                   <input
                     className="input-field"
                     type="date"
@@ -1798,7 +1847,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                 </div>
               </div>
               <div>
-                <span className="lbl">Tekrar</span>
+                <span className="lbl">Repeat</span>
                 <select
                   className="input-field"
                   value={repeat}
@@ -1812,88 +1861,37 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                 </select>
               </div>
               <div>
-                <span className="lbl">Etiketler</span>
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 6,
-                    marginTop: 5,
-                  }}
-                >
-                  {CATEGORIES.map((c) => (
+                <span className="lbl">Labels</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 5 }}>
+                  {(labels || []).map((lb: any) => (
                     <button
-                      key={c}
+                      key={lb.id}
                       className="tag-chip"
-                      onClick={() => toggleTag(c)}
+                      onClick={() => toggleTag(lb.name)}
                       style={{
-                        background: tags.includes(c)
-                          ? CAT_COLOR[c] + "33"
-                          : t.surface2,
-                        color: tags.includes(c) ? CAT_COLOR[c] : t.textSub,
-                        borderColor: tags.includes(c)
-                          ? CAT_COLOR[c]
-                          : t.border2,
+                        background: tags.includes(lb.name) ? lb.color + "33" : t.surface2,
+                        color: tags.includes(lb.name) ? lb.color : t.textSub,
+                        borderColor: tags.includes(lb.name) ? lb.color : t.border2,
+                        display: "flex", alignItems: "center", gap: 4,
                       }}
                     >
-                      {c}
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: lb.color, display: "inline-block", flexShrink: 0 }} />
+                      {lb.name}
                     </button>
                   ))}
+                  {(labels || []).length === 0 && (
+                    <span style={{ fontSize: 11, color: t.textMuted }}>No labels yet — add from the sidebar</span>
+                  )}
                 </div>
               </div>
-              {projects.length > 0 && (
-                <div style={{ marginBottom: 14 }}>
-                  <span className="lbl">Projeler</span>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                    {projects.map((p) => {
-                      const active = projectIds.includes(p.id);
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() =>
-                            setProjectIds((prev) =>
-                              active ? prev.filter((x) => x !== p.id) : [...prev, p.id]
-                            )
-                          }
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            padding: "5px 11px",
-                            borderRadius: 8,
-                            border: `1px solid ${active ? p.color : t.border}`,
-                            background: active ? p.color + "22" : t.surface2,
-                            color: active ? p.color : t.textSub,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            cursor: "pointer",
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              background: p.color,
-                              flexShrink: 0,
-                            }}
-                          />
-                          {p.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
               <div>
-                <span className="lbl">Not</span>
+                <span className="lbl">Notes</span>
                 <textarea
                   className="input-field"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={3}
-                  placeholder="Ek bilgi..."
+                  placeholder="Additional notes..."
                   style={{ resize: "vertical" }}
                 />
               </div>
@@ -1907,7 +1905,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                   value={newSub}
                   onChange={(e) => setNewSub(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addSub()}
-                  placeholder="Alt görev ekle..."
+                  placeholder="Add subtask..."
                   style={{ flex: 1 }}
                 />
                 <button
@@ -1935,7 +1933,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                     padding: "28px 0",
                   }}
                 >
-                  Henüz alt görev yok.
+                  No subtasks yet.
                 </div>
               )}
               {subtasks.map((s) => (
@@ -1970,14 +1968,14 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                   }}
                 >
                   {subtasks.filter((s) => s.done).length}/{subtasks.length}{" "}
-                  tamamlandı
+                  completed
                 </div>
               )}
             </div>
           )}
           {tab === "files" && (
             <div>
-              <div className="stitle">🔗 Link Ekle</div>
+              <div className="stitle">🔗 Add Link</div>
               <div
                 style={{
                   display: "flex",
@@ -1996,7 +1994,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                   className="input-field"
                   value={newLbl}
                   onChange={(e) => setNewLbl(e.target.value)}
-                  placeholder="Etiket (opsiyonel)"
+                  placeholder="Label (optional)"
                 />
               </div>
               <button
@@ -2004,7 +2002,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                 onClick={addLink}
                 style={{ marginBottom: 12 }}
               >
-                + Ekle
+                + Add
               </button>
               {links.map((l) => (
                 <div key={l.id} className="link-row">
@@ -2028,13 +2026,13 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
                 </div>
               ))}
               <div className="stitle" style={{ marginTop: 18 }}>
-                📎 Dosya Yükle
+                📎 Upload File
               </div>
               <div
                 className="drop-zone"
                 onClick={() => fileRef.current!.click()}
               >
-                Dosya seç
+                Choose file
                 <input
                   ref={fileRef}
                   type="file"
@@ -2075,14 +2073,14 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects =
             }}
           >
             <button className="btn-primary" onClick={save} style={{ flex: 1 }}>
-              Kaydet
+              Save
             </button>
             <button
               className="btn-secondary"
               onClick={onClose}
               style={{ width: "auto", padding: "10px 16px" }}
             >
-              İptal
+              Cancel
             </button>
           </div>
         </div>
@@ -2099,6 +2097,7 @@ function TaskDetail({
   onToggleSub,
   onStatusChange,
   dark,
+  labels,
 }) {
   const t = dark ? DARK : LIGHT;
   const assignee = users.find((u) => u.id === task.assigneeId);
@@ -2167,18 +2166,14 @@ function TaskDetail({
             >
               {task.priority}
             </span>
-            {task.tags?.map((tag) => (
-              <span
-                key={tag}
-                className="pill"
-                style={{
-                  background: CAT_COLOR[tag] + "33",
-                  color: CAT_COLOR[tag],
-                }}
-              >
-                {tag}
-              </span>
-            ))}
+            {task.tags?.map((tag) => {
+              const lc = (labels || []).find((l) => l.name === tag)?.color || (CAT_COLOR as any)[tag] || "#6b7280";
+              return (
+                <span key={tag} className="pill" style={{ background: lc + "33", color: lc }}>
+                  {tag}
+                </span>
+              );
+            })}
           </div>
           <div
             style={{
@@ -2192,19 +2187,19 @@ function TaskDetail({
             }}
           >
             <div>
-              <span className="lbl">Atanan</span>
+              <span className="lbl">Assignee</span>
               <span style={{ fontSize: 13, color: t.text, fontWeight: 500 }}>
                 {assignee?.name}
               </span>
             </div>
             <div>
-              <span className="lbl">Oluşturan</span>
+              <span className="lbl">Owner</span>
               <span style={{ fontSize: 13, color: t.text, fontWeight: 500 }}>
                 {owner?.name}
               </span>
             </div>
             <div>
-              <span className="lbl">Teslim</span>
+              <span className="lbl">Due Date</span>
               <span
                 style={{
                   fontSize: 13,
@@ -2217,7 +2212,7 @@ function TaskDetail({
             </div>
             {repeatLabel && (
               <div>
-                <span className="lbl">Tekrar</span>
+                <span className="lbl">Repeat</span>
                 <span className="rbadge">↻ {repeatLabel}</span>
               </div>
             )}
@@ -2241,7 +2236,7 @@ function TaskDetail({
           {task.subtasks?.length > 0 && (
             <div style={{ marginBottom: 14 }}>
               <div className="stitle">
-                Alt Görevler{" "}
+                Subtasks{" "}
                 <span
                   style={{
                     fontFamily: "'JetBrains Mono',monospace",
@@ -2348,7 +2343,7 @@ function TaskDetail({
   );
 }
 
-// ── Task Card ─────────────────────────────────────────────
+// ── Task Card (Kanban) ────────────────────────────────────
 function TaskCard({
   task,
   users,
@@ -2358,9 +2353,13 @@ function TaskCard({
   onDelete,
   onDetail,
   dark,
+  projects,
+  labels,
 }) {
   const t = dark ? DARK : LIGHT;
   const assignee = users.find((u) => u.id === task.assigneeId);
+  const project = (projects || []).find((p) => p.id === task.projectId);
+  const labelColor = (name: string) => (labels || []).find((l) => l.name === name)?.color || (CAT_COLOR as any)[name] || "#6b7280";
   const isOverdue =
     !["done", "cancelled"].includes(task.status) &&
     task.due &&
@@ -2373,141 +2372,114 @@ function TaskCard({
   const attachCount = (task.links?.length || 0) + (task.files?.length || 0);
   const isDimmed = ["done", "cancelled"].includes(task.status);
   const pri = priTokens(t, task.priority);
+  const statusInfo = statusMap[task.status || "todo"];
   return (
     <div
-      className="task-row"
+      className="task-row kanban-card"
+      onClick={() => onDetail(task)}
       style={{
-        padding: "13px 16px",
+        padding: "12px 14px",
+        cursor: "pointer",
         display: "flex",
-        alignItems: "flex-start",
-        gap: 10,
+        flexDirection: "column",
+        gap: 9,
+        borderLeft: `3px solid ${statusInfo?.color || t.border2}`,
+        minHeight: 90,
+        position: "relative",
       }}
     >
-      <div
-        style={{ flex: 1, minWidth: 0, cursor: "pointer" }}
-        onClick={() => onDetail(task)}
-      >
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: isDimmed ? t.textMuted : t.text,
-            textDecoration: isDimmed ? "line-through" : "none",
-            lineHeight: 1.45,
-            wordBreak: "break-word",
-            marginBottom: 7,
-          }}
-        >
-          {task.title}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 5,
-            marginBottom: 6,
-            alignItems: "center",
-          }}
-        >
-          <StatusBadge
-            status={task.status || "todo"}
-            onChange={(val) => onStatusChange(task.id, val)}
-            dark={dark}
-          />
+      {/* Status + Priority + Labels */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+        <StatusBadge
+          status={task.status || "todo"}
+          onChange={(val) => { onStatusChange(task.id, val); }}
+          dark={dark}
+        />
+        <span className="pill" style={{ background: pri.bg, color: pri.color }}>
+          {task.priority}
+        </span>
+        {task.tags?.slice(0, 2).map((tag) => (
           <span
+            key={tag}
             className="pill"
-            style={{ background: pri.bg, color: pri.color }}
-          >
-            {task.priority}
-          </span>
-          {task.tags?.map((tag) => (
-            <span
-              key={tag}
-              className="pill"
-              style={{
-                background: CAT_COLOR[tag] + "33",
-                color: CAT_COLOR[tag],
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
-            fontSize: 11,
-            color: t.textMuted,
-            alignItems: "center",
-            fontFamily: "'JetBrains Mono',monospace",
-          }}
-        >
-          {assignee && (
-            <span style={{ color: t.textSub }}>
-              @
-              {assignee.id === currentUser.id
-                ? "ben"
-                : assignee.name.split(" ")[0].toLowerCase()}
-            </span>
-          )}
-          {task.due && (
-            <span style={{ color: isOverdue ? "#ef4444" : t.textMuted }}>
-              {isOverdue ? "⚠ " : ""}
-              {task.due}
-            </span>
-          )}
-          {subTotal > 0 && (
-            <span>
-              {subDone}/{subTotal} alt
-            </span>
-          )}
-          {repeatLabel && <span className="rbadge">↻ {repeatLabel}</span>}
-          {attachCount > 0 && <span>📎 {attachCount}</span>}
-        </div>
-        {subTotal > 0 && (
-          <div
             style={{
-              height: 2,
-              background: t.border,
-              borderRadius: 99,
-              marginTop: 7,
-              maxWidth: 100,
+              background: labelColor(tag) + "22",
+              color: labelColor(tag),
             }}
           >
-            <div
-              style={{
-                height: "100%",
-                background: t.accent,
-                borderRadius: 99,
-                width: `${(subDone / subTotal) * 100}%`,
-                transition: "width .3s",
-              }}
-            />
-          </div>
+            {tag}
+          </span>
+        ))}
+      </div>
+
+      {/* Title */}
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: isDimmed ? t.textMuted : t.text,
+          textDecoration: isDimmed ? "line-through" : "none",
+          lineHeight: 1.45,
+          wordBreak: "break-word",
+          flex: 1,
+        }}
+      >
+        {task.title}
+      </div>
+
+      {/* Subtask progress */}
+      {subTotal > 0 && (
+        <div style={{ height: 2, background: t.border, borderRadius: 99 }}>
+          <div
+            style={{
+              height: "100%",
+              background: t.accent,
+              borderRadius: 99,
+              width: `${(subDone / subTotal) * 100}%`,
+              transition: "width .3s",
+            }}
+          />
+        </div>
+      )}
+
+      {/* Meta row */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+          fontSize: 11,
+          color: t.textMuted,
+          alignItems: "center",
+          fontFamily: "'JetBrains Mono',monospace",
+        }}
+      >
+        {assignee && (
+          <Avatar name={assignee.name} size={18} />
         )}
+        {task.due && (
+          <span style={{ color: isOverdue ? "#ef4444" : t.textMuted }}>
+            {isOverdue ? "⚠ " : ""}{task.due}
+          </span>
+        )}
+        {subTotal > 0 && <span>{subDone}/{subTotal} sub</span>}
+        {repeatLabel && <span className="rbadge">↻ {repeatLabel}</span>}
+        {attachCount > 0 && <span>📎 {attachCount}</span>}
+
+        <div style={{ marginLeft: "auto", display: "flex", gap: 1 }}>
+          <button
+            className="btn-icon del-btn"
+            style={{ minWidth: 22, minHeight: 22, fontSize: 12 }}
+            onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+          >✎</button>
+          <button
+            className="btn-icon del-btn"
+            style={{ minWidth: 22, minHeight: 22, fontSize: 12 }}
+            onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+          >✕</button>
+        </div>
       </div>
-      <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-        <button
-          className="btn-icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(task);
-          }}
-        >
-          ✎
-        </button>
-        <button
-          className="btn-icon del-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(task.id);
-          }}
-        >
-          ✕
-        </button>
-      </div>
+
     </div>
   );
 }
@@ -2518,6 +2490,7 @@ function TaskList({
   users,
   me,
   dark,
+  projects,
   priF,
   setPriF,
   tagF,
@@ -2533,328 +2506,188 @@ function TaskList({
   onDelete,
   onDetail,
   onNew,
-  groupByProject = false,
-  projects = [],
+  labels,
 }) {
   const t = dark ? DARK : LIGHT;
-  const activeCount = vis.filter(
-    (t) => !["done", "cancelled"].includes(t.status)
-  ).length;
-  const genelTasks = vis.filter((tk) => !tk.projectIds?.length);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [groupBy, setGroupBy] = useState<"project" | "label">("project");
+  const labelColor = (name: string) => (labels || []).find((l: any) => l.name === name)?.color || (CAT_COLOR as any)[name] || "#6b7280";
+  const activeCount = vis.filter((tk) => !["done", "cancelled"].includes(tk.status)).length;
+
+  // Build groups
+  const groupsMap: Record<string, { tasks: any[]; color: string; label: string }> = {};
+  vis.forEach((task) => {
+    let key: string;
+    let label: string;
+    let color: string;
+    if (groupBy === "project") {
+      const proj = (projects || []).find((p) => p.id === task.projectId);
+      if (proj) {
+        key = task.projectId;
+        label = proj.name;
+        color = proj.color;
+      } else if (task.tags && task.tags.length > 0) {
+        // fallback: no projectId assigned yet, use first tag as implicit group
+        key = "tag_" + task.tags[0];
+        label = task.tags[0];
+        color = labelColor(task.tags[0]);
+      } else {
+        key = "__none__";
+        label = "Unassigned";
+        color = t.textMuted;
+      }
+    } else {
+      key = task.tags && task.tags.length > 0 ? task.tags[0] : "__none__";
+      label = task.tags && task.tags.length > 0 ? task.tags[0] : "Untagged";
+      color = labelColor(label);
+    }
+    if (!groupsMap[key]) groupsMap[key] = { tasks: [], color, label };
+    groupsMap[key].tasks.push(task);
+  });
+  const entries = Object.entries(groupsMap);
+
+  const toggleGroup = (key: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
-          paddingBottom: 4,
-          marginBottom: 12,
-        }}
-      >
-        {[
-          { value: "ALL", label: "Tümü", emoji: "·", color: t.textSub },
-          ...STATUSES,
-        ].map((s) => (
+      {/* Status filter bar */}
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" as any, paddingBottom: 4, marginBottom: 12 }}>
+        {[{ value: "ALL", label: "All", emoji: "·", color: t.textSub }, ...STATUSES].map((s) => (
           <button
             key={s.value}
             onClick={() => setStatusF(s.value)}
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "5px 11px",
-              borderRadius: 7,
-              border: `1px solid ${
-                statusF === s.value ? s.color || t.accent : t.border
-              }`,
-              background:
-                statusF === s.value
-                  ? s.color
-                    ? s.color + "22"
-                    : t.accentBg
-                  : t.surface2,
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "5px 11px", borderRadius: 7,
+              border: `1px solid ${statusF === s.value ? s.color || t.accent : t.border}`,
+              background: statusF === s.value ? (s.color ? s.color + "22" : t.accentBg) : t.surface2,
               color: statusF === s.value ? s.color || t.accent : t.textMuted,
-              fontSize: 11,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: "'JetBrains Mono',monospace",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
+              fontSize: 11, fontWeight: 600, cursor: "pointer",
+              fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap", flexShrink: 0,
             }}
           >
             {s.emoji} {s.label}
           </button>
         ))}
       </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          marginBottom: 10,
-          alignItems: "center",
-        }}
-      >
+
+      {/* Search + filters + new button */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center", flexWrap: "wrap" }}>
         <input
-          className="input-sm"
-          value={search}
+          className="input-sm" value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Ara..."
-          style={{ flex: 1, fontSize: 14, padding: "8px 11px" }}
+          placeholder="Search..." style={{ flex: 1, minWidth: 120, fontSize: 14, padding: "8px 11px" }}
         />
-        <select
-          className="input-sm"
-          value={priF}
-          onChange={(e) => setPriF(e.target.value)}
-          style={{ width: "auto", flexShrink: 0 }}
-        >
-          <option value="ALL">Öncelik</option>
-          {PRIORITIES.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
+        <select className="input-sm" value={priF} onChange={(e) => setPriF(e.target.value)} style={{ width: "auto", flexShrink: 0 }}>
+          <option value="ALL">Priority</option>
+          {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <select
-          className="input-sm"
-          value={tagF}
-          onChange={(e) => setTagF(e.target.value)}
-          style={{ width: "auto", flexShrink: 0 }}
-        >
-          <option value="ALL">Etiket</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
+        <select className="input-sm" value={tagF} onChange={(e) => setTagF(e.target.value)} style={{ width: "auto", flexShrink: 0 }}>
+          <option value="ALL">Label</option>
+          {(labels || []).map((l: any) => <option key={l.id} value={l.name}>{l.name}</option>)}
         </select>
-        <button
-          onClick={onNew}
-          style={{
-            flexShrink: 0,
-            background: t.accent,
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "8px 14px",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          + Yeni
+        <button onClick={onNew} style={{ flexShrink: 0, background: t.accent, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+          + New
         </button>
       </div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 10,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            color: t.textMuted,
-            fontFamily: "'JetBrains Mono',monospace",
-          }}
-        >
-          {activeCount} aktif · {vis.length} toplam
+
+      {/* Meta row: count + groupBy toggle + hide done */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 11, color: t.textMuted, fontFamily: "'JetBrains Mono',monospace", flex: 1 }}>
+          {activeCount} active · {vis.length} total
         </span>
-        <button
-          className="btn-sm"
-          style={{ fontSize: 11, padding: "4px 10px" }}
-          onClick={() => setHideDone((p) => !p)}
-        >
-          {hideDone ? "Tümünü Göster" : "Bitti/İptal Gizle"}
-        </button>
-      </div>
-      {groupByProject ? (
-        <>
-          {projects
-            .filter((p) => vis.some((tk) => tk.projectIds?.includes(p.id)))
-            .map((p) => {
-              const group = vis.filter((tk) => tk.projectIds?.includes(p.id));
-              return (
-                <div key={p.id} style={{ marginBottom: 16 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginBottom: 6,
-                      paddingLeft: 2,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: "50%",
-                        background: p.color,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: t.textSub,
-                        letterSpacing: ".02em",
-                      }}
-                    >
-                      {p.name}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: t.textMuted,
-                        fontFamily: "'JetBrains Mono',monospace",
-                      }}
-                    >
-                      {group.length}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      background: t.surface,
-                      borderRadius: 12,
-                      border: `1px solid ${t.border}`,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {group.map((task) => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        users={users}
-                        currentUser={me}
-                        dark={dark}
-                        onStatusChange={onStatus}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                        onDetail={onDetail}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          {genelTasks.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginBottom: 6,
-                  paddingLeft: 2,
-                }}
-              >
-                <span
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: "50%",
-                    background: t.border2,
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: t.textSub,
-                    letterSpacing: ".02em",
-                  }}
-                >
-                  Genel
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: t.textMuted,
-                    fontFamily: "'JetBrains Mono',monospace",
-                  }}
-                >
-                  {genelTasks.length}
-                </span>
-              </div>
-              <div
-                style={{
-                  background: t.surface,
-                  borderRadius: 12,
-                  border: `1px solid ${t.border}`,
-                  overflow: "hidden",
-                }}
-              >
-                {genelTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    users={users}
-                    currentUser={me}
-                    dark={dark}
-                    onStatusChange={onStatus}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onDetail={onDetail}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          {vis.length === 0 && (
-            <div
+        {/* Group-by toggle */}
+        <div style={{ display: "flex", background: t.surface2, borderRadius: 8, padding: 2, border: `1px solid ${t.border}` }}>
+          {(["project", "label"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setGroupBy(mode)}
               style={{
-                padding: "40px 0",
-                textAlign: "center",
-                color: t.textMuted,
-                fontSize: 14,
+                padding: "4px 10px", borderRadius: 6, border: "none",
+                background: groupBy === mode ? t.accent : "transparent",
+                color: groupBy === mode ? "#fff" : t.textMuted,
+                fontSize: 11, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'JetBrains Mono',monospace",
+                textTransform: "capitalize",
               }}
             >
-              Görev bulunamadı.
-            </div>
-          )}
-        </>
-      ) : (
-        <div
-          style={{
-            background: t.surface,
-            borderRadius: 12,
-            border: `1px solid ${t.border}`,
-            overflow: "hidden",
-          }}
-        >
-          {vis.length === 0 && (
-            <div
-              style={{
-                padding: "40px 0",
-                textAlign: "center",
-                color: t.textMuted,
-                fontSize: 14,
-              }}
-            >
-              Görev bulunamadı.
-            </div>
-          )}
-          {vis.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              users={users}
-              currentUser={me}
-              dark={dark}
-              onStatusChange={onStatus}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onDetail={onDetail}
-            />
+              {mode === "project" ? "By Project" : "By Label"}
+            </button>
           ))}
         </div>
+        <button className="btn-sm" style={{ fontSize: 11, padding: "4px 10px" }} onClick={() => setHideDone((p) => !p)}>
+          {hideDone ? "Show All" : "Hide Done/Cancelled"}
+        </button>
+      </div>
+
+      {/* Grouped cards */}
+      {entries.length === 0 ? (
+        <div style={{ padding: "48px 0", textAlign: "center", color: t.textMuted, fontSize: 14 }}>
+          No tasks found.
+        </div>
+      ) : (
+        entries.map(([key, { tasks: groupTasks, color: groupColor, label: groupLabel }]) => {
+          const isCollapsed = collapsedGroups.has(key);
+          return (
+            <div key={key} style={{ marginBottom: 14 }}>
+              {/* Group header */}
+              <button
+                onClick={() => toggleGroup(key)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 9,
+                  padding: "9px 14px",
+                  background: t.surface,
+                  border: `1px solid ${t.border}`,
+                  borderRadius: isCollapsed ? 10 : "10px 10px 0 0",
+                  cursor: "pointer",
+                  borderLeft: `4px solid ${groupColor}`,
+                }}
+              >
+                <span style={{ flex: 1, textAlign: "left", fontSize: 13, fontWeight: 700, color: t.text }}>{groupLabel}</span>
+                <span style={{ fontSize: 11, color: t.textMuted, fontFamily: "'JetBrains Mono',monospace", background: t.surface2, borderRadius: 5, padding: "2px 7px" }}>{groupTasks.length}</span>
+                <span style={{ fontSize: 10, color: t.textMuted }}>{isCollapsed ? "▶" : "▼"}</span>
+              </button>
+
+              {/* Cards grid */}
+              {!isCollapsed && (
+                <div
+                  style={{
+                    background: t.bg,
+                    border: `1px solid ${t.border}`,
+                    borderTop: "none",
+                    borderRadius: "0 0 10px 10px",
+                    padding: 10,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                    gap: 8,
+                  }}
+                >
+                  {groupTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      users={users}
+                      currentUser={me}
+                      dark={dark}
+                      projects={projects}
+                      labels={labels}
+                      onStatusChange={onStatus}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      onDetail={onDetail}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })
       )}
     </>
   );
@@ -2862,14 +2695,17 @@ function TaskList({
 
 // ── Main ──────────────────────────────────────────────────
 export default function App() {
-  const [dark, setDark] = useState(true);
-  // users ve me burada yaşıyor — tek source of truth
+  const [dark, setDark] = useState(false);
   const [users, setUsers] = useState(INITIAL_USERS);
   const [me, setMe] = useState(null);
   const [tasks, setTasks] = useState(SEED_TASKS);
   const [projects, setProjects] = useState<any[]>([]);
+  const [labels, setLabels] = useState<any[]>([]);
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
+  const [labelsOpen, setLabelsOpen] = useState(false);
   const [navTab, setNavTab] = useState("mine");
   const [filterUser, setFU] = useState("");
+  const [filterProject, setFP] = useState("");
   const [modal, setModal] = useState(null);
   const [detail, setDetail] = useState(null);
   const [priF, setPriF] = useState("ALL");
@@ -2877,10 +2713,9 @@ export default function App() {
   const [statusF, setStatusF] = useState("ALL");
   const [search, setSearch] = useState("");
   const [hideDone, setHideDone] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
-const [showNewProject, setShowNewProject] = useState(false);
-const [newProjectName, setNewProjectName] = useState("");
-const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
+
+  useEffect(() => { const s = localStorage.getItem('evanato_dark'); if (s !== null) setDark(s === '1'); }, []);
+  useEffect(() => { try { const s = localStorage.getItem('evanato_session'); if (s) { const session = JSON.parse(s); if (session.expires > Date.now()) setMe(session.user as any); else localStorage.removeItem('evanato_session'); } } catch {} }, []);
 
   injectCss(dark);
 
@@ -2923,31 +2758,47 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
     return () => unsub();
   }, []);
 
-  // Firebase: projects okuma
+  // Firebase: projects
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "projects"), (snap) => {
-      if (!snap.empty) {
-        setProjects(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
-      }
+      setProjects(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
     });
     return () => unsub();
   }, []);
-  const t = dark ? DARK : LIGHT;
-  const toggleDark = () => setDark((d) => !d);
 
-  // Çıkış: me'yi null yap, ama users state'i korunur
-  const handleLogout = () => setMe(null);
-
-  const handleCreateProject = async () => {
-    if (!newProjectName.trim()) return;
-    await createProject(newProjectName.trim(), newProjectColor);
-    setNewProjectName("");
-    setNewProjectColor(PROJECT_COLORS[0]);
-    setShowNewProject(false);
+  const addProject = async (name: string, color: string) => {
+    const p = { id: uid(), name: name.trim(), color, createdAt: Date.now() };
+    await setDoc(doc(db, "projects", p.id), p);
+    return p.id;
+  };
+  const deleteProject = async (pid: string) => {
+    await deleteDoc(doc(db, "projects", pid));
   };
 
-  // Login: users state'inden bul
-  const handleLogin = (u) => setMe(u);
+  // Firebase: labels
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "labels"), (snap) => {
+      setLabels(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
+    });
+    return () => unsub();
+  }, []);
+
+  const addLabel = async (name: string, color: string) => {
+    const l = { id: uid(), name: name.trim(), color, createdAt: Date.now() };
+    await setDoc(doc(db, "labels", l.id), l);
+    return l.id;
+  };
+  const deleteLabel = async (lid: string) => {
+    await deleteDoc(doc(db, "labels", lid));
+  };
+  const t = dark ? DARK : LIGHT;
+  const toggleDark = () => setDark((d) => { const n = !d; localStorage.setItem('evanato_dark', n ? '1' : '0'); return n; });
+
+  // Logout: clear session
+  const handleLogout = () => { localStorage.removeItem('evanato_session'); setMe(null); };
+
+  // Login: persist session for 30 days
+  const handleLogin = (u) => { const s = { user: u, expires: Date.now() + 30 * 24 * 60 * 60 * 1000 }; localStorage.setItem('evanato_session', JSON.stringify(s)); setMe(u); };
 
   if (!me)
     return (
@@ -2971,15 +2822,9 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
   const handleSave = async (data) => {
     if (!modal || modal === "new") {
       const newTask = { id: uid(), ownerId: me.id, createdAt: Date.now(), ...data };
-      setTasks((p) => [newTask, ...p]);
       await setDoc(doc(db, "tasks", newTask.id), newTask);
     } else {
-      const existing = tasks.find((tk) => tk.id === modal.id);
-      const updated = { ...existing, ...data };
-      setTasks((p) =>
-        p.map((tk) => (tk.id === modal.id ? updated : tk))
-      );
-      await setDoc(doc(db, "tasks", modal.id), updated);
+      await setDoc(doc(db, "tasks", (modal as any).id), { ...(modal as any), ...data });
     }
     setModal(null);
   };
@@ -3021,35 +2866,23 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
         : prev
     );
   };
-  const createProject = async (name: string, color: string) => {
-    const p = { id: uid(), name, color, createdAt: Date.now(), ownerId: me.id };
-    setProjects((prev) => [...prev, p]);
-    await setDoc(doc(db, "projects", p.id), p);
-  };
-  const deleteProject = async (pid: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== pid));
-    await deleteDoc(doc(db, "projects", pid));
-    const affected = tasks.filter((tk) => tk.projectIds?.includes(pid));
-    for (const tk of affected) {
-      const updated = { ...tk, projectIds: tk.projectIds.filter((x) => x !== pid) };
-      setTasks((prev) => prev.map((t) => (t.id === tk.id ? updated : t)));
-      await setDoc(doc(db, "tasks", tk.id), updated);
-    }
-  };
   const delTask = async (id) => {
     await deleteDoc(doc(db, "tasks", id));
     if (detail?.id === id) setDetail(null);
   };
 
   let vis = tasks;
-  if (selectedProject) {
-    vis = tasks.filter((tk) => tk.projectIds?.includes(selectedProject));
-  } else if (navTab === "mine") {
-    vis = tasks.filter((tk) => tk.assigneeId === me.id);
-  } else if (navTab === "delegated") {
+  if (navTab === "mine") vis = tasks.filter((tk) => tk.assigneeId === me.id);
+  else if (navTab === "delegated")
     vis = tasks.filter((tk) => tk.ownerId === me.id && tk.assigneeId !== me.id);
-  } else if (navTab === "people" && filterUser) {
+  else if (navTab === "people" && filterUser)
     vis = tasks.filter((tk) => tk.assigneeId === filterUser);
+  else if (navTab === "project" && filterProject) {
+    const proj = projects.find((p) => p.id === filterProject);
+    vis = tasks.filter((tk) =>
+      tk.projectId === filterProject ||
+      (!tk.projectId && proj && tk.tags?.includes(proj.name))
+    );
   }
   if (priF !== "ALL") vis = vis.filter((tk) => tk.priority === priF);
   if (tagF !== "ALL") vis = vis.filter((tk) => tk.tags?.includes(tagF));
@@ -3079,38 +2912,33 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
   });
 
   const SIDEBAR_NAV = [
-    { k: "all", label: "Tüm Görevler", icon: "⊞" },
-    { k: "mine", label: "Görevlerim", icon: "⊡" },
-    { k: "delegated", label: "Delege Ettiklerim", icon: "⇢" },
-    { k: "people", label: "Kişiye Göre", icon: "⊕" },
-    { k: "settings", label: "Ayarlar", icon: "⚙" },
+    { k: "mine", label: "My Tasks", icon: "⊡" },
+    { k: "delegated", label: "Delegated", icon: "⇢" },
+    { k: "people", label: "By Person", icon: "⊕" },
+    { k: "settings", label: "Settings", icon: "⚙" },
   ];
   const MOB_NAV = [
-    { k: "all", icon: "⊞", label: "Tümü" },
-    { k: "mine", icon: "⊡", label: "Görevlerim" },
-    { k: "delegated", icon: "⇢", label: "Delege" },
-    { k: "people", icon: "⊕", label: "Kişiler" },
-    { k: "settings", icon: "⚙", label: "Ayarlar" },
+    { k: "mine", icon: "⊡", label: "My Tasks" },
+    { k: "delegated", icon: "⇢", label: "Delegated" },
+    { k: "people", icon: "⊕", label: "By Person" },
+    { k: "settings", icon: "⚙", label: "Settings" },
   ];
-  const pageTitle = {
-    all: "Tüm Görevler",
-    mine: "Görevlerim",
-    delegated: "Delege Ettiklerim",
-    people: "Kişiye Göre",
-    settings: "Ayarlar",
+  const activeProject = projects.find((p) => p.id === filterProject);
+  const pageTitle: Record<string, string> = {
+    mine: "My Tasks",
+    delegated: "Delegated",
+    people: "By Person",
+    project: activeProject ? activeProject.name : "All Tasks",
+    settings: "Settings",
   };
-
-  const visibleProjects = projects.filter(
-    (p) =>
-      p.ownerId === me.id ||
-      tasks.some((tk) => tk.projectIds?.includes(p.id) && tk.assigneeId === me.id)
-  );
 
   const listProps = {
     vis,
     users,
     me,
     dark,
+    projects,
+    labels,
     priF,
     setPriF,
     tagF,
@@ -3126,8 +2954,6 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
     onDelete: delTask,
     onDetail: setDetail,
     onNew: () => setModal("new"),
-    groupByProject: navTab === "all" && !selectedProject,
-    projects: visibleProjects,
   };
   // setMe burada da geçiliyor — ayarlardan profil güncellenince me güncellenir
   const settingsProps = { users, setUsers, me, setMe, dark, toggleDark, tasks };
@@ -3224,44 +3050,106 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
           {SIDEBAR_NAV.map((n) => (
             <button
               key={n.k}
-              className={`sidebar-item${navTab === n.k ? " active" : ""}`}
-              onClick={() => { setNavTab(n.k); setSelectedProject(null); }}
+              className={`sidebar-item${navTab === n.k && n.k !== "project" ? " active" : ""}`}
+              onClick={() => { setNavTab(n.k); setFP(""); }}
             >
               <span style={{ fontSize: 15 }}>{n.icon}</span>
               <span>{n.label}</span>
             </button>
           ))}
-          {/* Projeler bölümü */}
-          <div style={{ marginTop: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", marginBottom: 6 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: t.textMuted }}>Projeler</span>
-              <button className="btn-icon" style={{ fontSize: 16, color: t.textMuted }} onClick={() => setShowNewProject(true)}>+</button>
-            </div>
-            {visibleProjects.map((p) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center" }}>
+
+          {/* Projects section — always visible */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, letterSpacing: ".1em", textTransform: "uppercase", padding: "0 12px", marginBottom: 4 }}>Projects</div>
+            {projects.map((p) => (
+              <button
+                key={p.id}
+                className={`sidebar-item${navTab === "project" && filterProject === p.id ? " active" : ""}`}
+                onClick={() => { setNavTab("project"); setFP(p.id); }}
+                style={{ gap: 8 }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0, display: "inline-block" }} />
+                <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                 <button
-                  className={`sidebar-item${selectedProject === p.id ? " active" : ""}`}
-                  style={{ flex: 1 }}
-                  onClick={() => { setSelectedProject(p.id); setNavTab("all"); }}
-                >
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
-                  <span>{p.name}</span>
-                </button>
+                  onClick={(e) => { e.stopPropagation(); if (window.confirm(`Delete project "${p.name}"?`)) deleteProject(p.id); }}
+                  style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11, opacity: 0, transition: "opacity .12s" }}
+                  className="del-btn"
+                >✕</button>
+                <span style={{ fontSize: 10, color: t.textMuted, fontFamily: "'JetBrains Mono',monospace" }}>
+                  {tasks.filter((tk) => tk.projectId === p.id || (!tk.projectId && tk.tags?.includes(p.name))).length}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Labels section — collapsed by default */}
+          <div style={{ marginTop: 12 }}>
+            <button
+              onClick={() => setLabelsOpen((v) => !v)}
+              style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", cursor: "pointer", padding: "0 12px", marginBottom: 4 }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, letterSpacing: ".1em", textTransform: "uppercase", flex: 1, textAlign: "left" }}>Labels</span>
+              <span style={{ fontSize: 10, color: t.textMuted, transition: "transform .15s", display: "inline-block", transform: labelsOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
+            </button>
+            {labelsOpen && labels.map((lb: any) => (
+              <div
+                key={lb.id}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 12px", borderRadius: 8 }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: lb.color, flexShrink: 0, display: "inline-block" }} />
+                <span style={{ flex: 1, fontSize: 13, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lb.name}</span>
                 <button
-                  className="btn-icon"
-                  style={{ fontSize: 12, color: t.textMuted, paddingRight: 8 }}
-                  onClick={() => {
-                    if (window.confirm(`"${p.name}" projesini silmek istiyor musun?`))
-                      deleteProject(p.id);
-                    if (selectedProject === p.id) setSelectedProject(null);
-                  }}
+                  onClick={() => { if (window.confirm(`Delete label "${lb.name}"?`)) deleteLabel(lb.id); }}
+                  style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", padding: "0 2px", fontSize: 11 }}
                 >✕</button>
               </div>
             ))}
-            {visibleProjects.length === 0 && (
-              <div style={{ padding: "8px 12px", fontSize: 12, color: t.textMuted }}>Henüz proje yok.</div>
+            {labelsOpen && labels.length === 0 && (
+              <div style={{ fontSize: 11, color: t.textMuted, padding: "4px 12px" }}>No labels yet</div>
             )}
           </div>
+
+          {/* Combined Add button */}
+          <div style={{ marginTop: 8, padding: "0 0" }}>
+            {addPickerOpen ? (
+              <div style={{ display: "flex", gap: 6, padding: "4px 8px", alignItems: "center" }}>
+                <button
+                  onClick={async () => {
+                    const name = prompt("Project name:");
+                    if (!name?.trim()) { setAddPickerOpen(false); return; }
+                    const color = PROJECT_COLORS[projects.length % PROJECT_COLORS.length];
+                    const id = await addProject(name, color);
+                    setNavTab("project"); setFP(id); setAddPickerOpen(false);
+                  }}
+                  style={{ flex: 1, background: t.accent, color: "#fff", border: "none", borderRadius: 7, padding: "6px 0", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >Project</button>
+                <button
+                  onClick={async () => {
+                    const name = prompt("Label name:");
+                    if (!name?.trim()) { setAddPickerOpen(false); return; }
+                    const color = PROJECT_COLORS[(projects.length + labels.length) % PROJECT_COLORS.length];
+                    await addLabel(name, color);
+                    setLabelsOpen(true); setAddPickerOpen(false);
+                  }}
+                  style={{ flex: 1, background: t.surface2, color: t.text, border: `1px solid ${t.border}`, borderRadius: 7, padding: "6px 0", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >Label</button>
+                <button
+                  onClick={() => setAddPickerOpen(false)}
+                  style={{ background: "none", border: "none", color: t.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px" }}
+                >✕</button>
+              </div>
+            ) : (
+              <button
+                className="sidebar-item"
+                onClick={() => setAddPickerOpen(true)}
+                style={{ color: t.textMuted, fontSize: 12 }}
+              >
+                <span style={{ fontSize: 14 }}>+</span>
+                <span>Add</span>
+              </button>
+            )}
+          </div>
+
           <div style={{ flex: 1 }} />
           <div
             style={{
@@ -3315,7 +3203,7 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
                 }}
                 onClick={handleLogout}
               >
-                Çıkış
+                Log Out
               </button>
               <button
                 onClick={toggleDark}
@@ -3343,9 +3231,7 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
                 letterSpacing: "-.3px",
               }}
             >
-              {selectedProject
-                ? visibleProjects.find((p) => p.id === selectedProject)?.name ?? "Proje"
-                : pageTitle[navTab]}
+              {pageTitle[navTab]}
             </h1>
             <div
               style={{
@@ -3355,7 +3241,7 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
                 marginTop: 2,
               }}
             >
-              {new Date().toLocaleDateString("tr-TR", {
+              {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
@@ -3370,7 +3256,7 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
                 onChange={(e) => setFU(e.target.value)}
                 style={{ maxWidth: 260 }}
               >
-                <option value="">— Herkesi göster —</option>
+                <option value="">— Show everyone —</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -3430,9 +3316,7 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
                   lineHeight: 1.1,
                 }}
               >
-                {selectedProject
-                  ? visibleProjects.find((p) => p.id === selectedProject)?.name ?? "Proje"
-                  : pageTitle[navTab]}
+                {pageTitle[navTab]}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -3477,7 +3361,7 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
                 value={filterUser}
                 onChange={(e) => setFU(e.target.value)}
               >
-                <option value="">— Herkesi göster —</option>
+                <option value="">— Show everyone —</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -3499,7 +3383,7 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
             <button
               key={n.k}
               className={`nav-item${navTab === n.k ? " active" : ""}`}
-              onClick={() => { setNavTab(n.k); setSelectedProject(null); }}
+              onClick={() => setNavTab(n.k)}
             >
               <span style={{ fontSize: 18 }}>{n.icon}</span>
               <span>{n.label}</span>
@@ -3541,45 +3425,12 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
           onSave={handleSave}
           onClose={() => setModal(null)}
           dark={dark}
-          projects={visibleProjects}
+          projects={projects}
+          onAddProject={addProject}
+          labels={labels}
+          onAddLabel={addLabel}
+          onDeleteLabel={deleteLabel}
         />
-      )}
-      {showNewProject && (
-        <div
-          className="modal-bg"
-          onClick={(e) => e.target === e.currentTarget && setShowNewProject(false)}
-        >
-          <div className="modal slide-up">
-            <div className="modal-inner">
-              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16, color: t.text }}>Yeni Proje</div>
-              <input
-                className="input"
-                placeholder="Proje adı"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleCreateProject(); }}
-                autoFocus
-                style={{ width: "100%", marginBottom: 14 }}
-              />
-              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-                {PROJECT_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setNewProjectColor(c)}
-                    style={{
-                      width: 24, height: 24, borderRadius: "50%", background: c,
-                      cursor: "pointer", border: newProjectColor === c ? `3px solid ${t.text}` : "3px solid transparent",
-                    }}
-                  />
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button className="btn-secondary" onClick={() => setShowNewProject(false)}>İptal</button>
-                <button className="btn-primary" onClick={handleCreateProject}>Kaydet</button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
       {detail && (
         <TaskDetail
@@ -3589,6 +3440,7 @@ const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
           onToggleSub={toggleSub}
           onStatusChange={changeStatus}
           dark={dark}
+          labels={labels}
         />
       )}
     </>
