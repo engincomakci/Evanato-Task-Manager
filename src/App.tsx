@@ -25,13 +25,15 @@ const STATUSES = [
   { value: "cancelled", label: "İptal", emoji: "✕", color: "#ef4444" },
 ];
 const statusMap = Object.fromEntries(STATUSES.map((s) => [s.value, s]));
-const CATEGORIES = ["İş", "Kişisel", "Acil", "Proje", "Toplantı", "Diğer"];
+const CATEGORIES = ["Kişisel", "Acil", "Proje", "Toplantı", "Vize", "Eğitim", "Satış Fırsatı", "Diğer"];
 const CAT_COLOR = {
-  İş: "#3b82f6",
   Kişisel: "#8b5cf6",
   Acil: "#ef4444",
   Proje: "#10b981",
   Toplantı: "#f59e0b",
+  Vize: "#0ea5e9",
+  Eğitim: "#f97316",
+  "Satış Fırsatı": "#22c55e",
   Diğer: "#6b7280",
 };
 const REPEAT_OPTIONS = [
@@ -91,7 +93,7 @@ const SEED_TASKS = [
     status: "inprogress",
     due: "2026-03-20",
     note: "Figma linki paylaşıldı",
-    tags: ["İş", "Proje"],
+    tags: ["Proje"],
     links: [{ id: uid(), url: "https://figma.com", label: "Figma Dosyası" }],
     subtasks: [
       { id: uid(), text: "Wireframe", done: true },
@@ -104,7 +106,7 @@ const SEED_TASKS = [
     priority: "Medium",
     status: "todo",
     due: "2026-03-14",
-    tags: ["İş", "Toplantı"],
+    tags: ["Toplantı"],
     repeat: "weekly",
   }),
   mkTask({
@@ -113,7 +115,7 @@ const SEED_TASKS = [
     priority: "High",
     status: "review",
     due: "2026-03-18",
-    tags: ["İş", "Proje"],
+    tags: ["Proje"],
   }),
   mkTask({
     title: "Alışveriş listesi",
@@ -2739,15 +2741,18 @@ export default function App() {
     return d;
   };
   const handleSave = async (data) => {
-    if (!modal || modal === "new")
-      setTasks((p) => [
-        { id: uid(), ownerId: me.id, createdAt: Date.now(), ...data },
-        ...p,
-      ]);
-    else
+    if (!modal || modal === "new") {
+      const newTask = { id: uid(), ownerId: me.id, createdAt: Date.now(), ...data };
+      setTasks((p) => [newTask, ...p]);
+      await setDoc(doc(db, "tasks", newTask.id), newTask);
+    } else {
+      const existing = tasks.find((tk) => tk.id === modal.id);
+      const updated = { ...existing, ...data };
       setTasks((p) =>
-        p.map((tk) => (tk.id === modal.id ? { ...tk, ...data } : tk))
+        p.map((tk) => (tk.id === modal.id ? updated : tk))
       );
+      await setDoc(doc(db, "tasks", modal.id), updated);
+    }
     setModal(null);
   };
   const changeStatus = async (id, val) => {
