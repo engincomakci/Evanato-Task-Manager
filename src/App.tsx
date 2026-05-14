@@ -2724,6 +2724,7 @@ export default function App() {
   const [statusF, setStatusF] = useState("ALL");
   const [search, setSearch] = useState("");
   const [hideDone, setHideDone] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
   injectCss(dark);
 
@@ -2877,11 +2878,15 @@ export default function App() {
   };
 
   let vis = tasks;
-  if (navTab === "mine") vis = tasks.filter((tk) => tk.assigneeId === me.id);
-  else if (navTab === "delegated")
+  if (selectedProject) {
+    vis = tasks.filter((tk) => tk.projectIds?.includes(selectedProject));
+  } else if (navTab === "mine") {
+    vis = tasks.filter((tk) => tk.assigneeId === me.id);
+  } else if (navTab === "delegated") {
     vis = tasks.filter((tk) => tk.ownerId === me.id && tk.assigneeId !== me.id);
-  else if (navTab === "people" && filterUser)
+  } else if (navTab === "people" && filterUser) {
     vis = tasks.filter((tk) => tk.assigneeId === filterUser);
+  }
   if (priF !== "ALL") vis = vis.filter((tk) => tk.priority === priF);
   if (tagF !== "ALL") vis = vis.filter((tk) => tk.tags?.includes(tagF));
   if (statusF !== "ALL")
@@ -2910,18 +2915,21 @@ export default function App() {
   });
 
   const SIDEBAR_NAV = [
+    { k: "all", label: "Tüm Görevler", icon: "⊞" },
     { k: "mine", label: "Görevlerim", icon: "⊡" },
     { k: "delegated", label: "Delege Ettiklerim", icon: "⇢" },
     { k: "people", label: "Kişiye Göre", icon: "⊕" },
     { k: "settings", label: "Ayarlar", icon: "⚙" },
   ];
   const MOB_NAV = [
+    { k: "all", icon: "⊞", label: "Tümü" },
     { k: "mine", icon: "⊡", label: "Görevlerim" },
     { k: "delegated", icon: "⇢", label: "Delege" },
     { k: "people", icon: "⊕", label: "Kişiler" },
     { k: "settings", icon: "⚙", label: "Ayarlar" },
   ];
   const pageTitle = {
+    all: "Tüm Görevler",
     mine: "Görevlerim",
     delegated: "Delege Ettiklerim",
     people: "Kişiye Göre",
@@ -3045,7 +3053,7 @@ export default function App() {
             <button
               key={n.k}
               className={`sidebar-item${navTab === n.k ? " active" : ""}`}
-              onClick={() => setNavTab(n.k)}
+              onClick={() => { setNavTab(n.k); setSelectedProject(null); }}
             >
               <span style={{ fontSize: 15 }}>{n.icon}</span>
               <span>{n.label}</span>
@@ -3284,7 +3292,7 @@ export default function App() {
             <button
               key={n.k}
               className={`nav-item${navTab === n.k ? " active" : ""}`}
-              onClick={() => setNavTab(n.k)}
+              onClick={() => { setNavTab(n.k); setSelectedProject(null); }}
             >
               <span style={{ fontSize: 18 }}>{n.icon}</span>
               <span>{n.label}</span>
