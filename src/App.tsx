@@ -25,6 +25,10 @@ const STATUSES = [
   { value: "cancelled", label: "İptal", emoji: "✕", color: "#ef4444" },
 ];
 const statusMap = Object.fromEntries(STATUSES.map((s) => [s.value, s]));
+const PROJECT_COLORS = [
+  "#3b82f6", "#8b5cf6", "#ef4444", "#10b981",
+  "#f59e0b", "#0ea5e9", "#f97316", "#ec4899",
+];
 const CATEGORIES = ["Kişisel", "Acil", "Proje", "Toplantı", "Vize", "Eğitim", "Satış Fırsatı", "Diğer"];
 const CAT_COLOR = {
   Kişisel: "#8b5cf6",
@@ -2662,6 +2666,7 @@ export default function App() {
   const [users, setUsers] = useState(INITIAL_USERS);
   const [me, setMe] = useState(null);
   const [tasks, setTasks] = useState(SEED_TASKS);
+  const [projects, setProjects] = useState<any[]>([]);
   const [navTab, setNavTab] = useState("mine");
   const [filterUser, setFU] = useState("");
   const [modal, setModal] = useState(null);
@@ -2709,6 +2714,14 @@ export default function App() {
       if (!snap.empty) {
         setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
       }
+    });
+    return () => unsub();
+  }, []);
+
+  // Firebase: projects okuma
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "projects"), (snap) => {
+      setProjects(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
     });
     return () => unsub();
   }, []);
