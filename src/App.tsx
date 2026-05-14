@@ -1257,7 +1257,6 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
   const [pw, setPw] = useState("");
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
-  const [showDemo, setShowDemo] = useState(false);
 
   const doLogin = () => {
     const u = users.find((u) => u.email === email && u.password === pw);
@@ -1501,74 +1500,6 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
           </div>
         </div>
 
-        {mode === "login" && (
-          <>
-            <button
-              onClick={() => setShowDemo((p) => !p)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: t.textMuted,
-                fontSize: 12,
-                cursor: "pointer",
-                padding: "10px 0",
-                fontFamily: "'JetBrains Mono',monospace",
-                textAlign: "center",
-                width: "100%",
-              }}
-            >
-              {showDemo
-                ? "▲ hide demo accounts"
-                : "▼ show demo accounts"}
-            </button>
-            {showDemo && (
-              <div
-                style={{
-                  background: t.surface,
-                  border: `1px solid ${t.border}`,
-                  borderRadius: 10,
-                  padding: "12px 14px",
-                  fontFamily: "'JetBrains Mono',monospace",
-                }}
-              >
-                {/* DÜZELTME: SEED_USERS değil, live users prop'u kullanılıyor */}
-                <div
-                  style={{ fontSize: 11, color: t.textMuted, marginBottom: 8 }}
-                >
-                  // {users.length} users · default password: 123
-                </div>
-                {users.map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      setEmail(u.email);
-                      setPw(u.password);
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      width: "100%",
-                      textAlign: "left",
-                      background: "transparent",
-                      border: "none",
-                      color: t.accent,
-                      fontSize: 12,
-                      padding: "5px 0",
-                      cursor: "pointer",
-                      gap: 8,
-                    }}
-                  >
-                    <span>→ {u.email}</span>
-                    <span style={{ fontSize: 10, color: t.textMuted }}>
-                      {u.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
       </div>
     </div>
   );
