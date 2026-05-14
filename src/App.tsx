@@ -1795,6 +1795,19 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects, 
               <div>
                 <span className="lbl">Labels</span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 5 }}>
+                  {/* Orphaned tags: applied to task but not in labels collection */}
+                  {tags.filter((tag: string) => !(labels || []).find((l: any) => l.name === tag)).map((tag: string) => (
+                    <button
+                      key={tag}
+                      className="tag-chip"
+                      onClick={() => toggleTag(tag)}
+                      style={{ background: "#6b728022", color: "#6b7280", borderColor: "#6b7280", display: "flex", alignItems: "center", gap: 4 }}
+                      title="Legacy tag — click to remove"
+                    >
+                      {tag} ✕
+                    </button>
+                  ))}
+                  {/* Firebase labels */}
                   {(labels || []).map((lb: any) => (
                     <button
                       key={lb.id}
@@ -1811,7 +1824,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects, 
                       {lb.name}
                     </button>
                   ))}
-                  {(labels || []).length === 0 && (
+                  {(labels || []).length === 0 && tags.filter((tag: string) => !(labels || []).find((l: any) => l.name === tag)).length === 0 && (
                     <span style={{ fontSize: 11, color: t.textMuted }}>No labels yet — add from the sidebar</span>
                   )}
                 </div>
