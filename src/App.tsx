@@ -79,6 +79,7 @@ const mkTask = (o) => ({
   ownerId: "u1",
   createdAt: Date.now(),
   subtasks: [],
+  projectIds: [],
   tags: [],
   links: [],
   files: [],
@@ -1572,7 +1573,7 @@ function AuthScreen({ users, setUsers, onLogin, dark, toggleDark }) {
 }
 
 // ── Task Modal ────────────────────────────────────────────
-function TaskModal({ task, users, currentUser, onSave, onClose, dark }) {
+function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects = [] }) {
   const t = dark ? DARK : LIGHT;
   const [title, setTitle] = useState(task?.title || "");
   const [assigneeId, setAss] = useState(task?.assigneeId || currentUser.id);
@@ -1583,6 +1584,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark }) {
   const [repeat, setRepeat] = useState(task?.repeat || "");
   const [tags, setTags] = useState(task?.tags || []);
   const [subtasks, setSubs] = useState(task?.subtasks || []);
+  const [projectIds, setProjectIds] = useState<string[]>(task?.projectIds || []);
   const [links, setLinks] = useState(task?.links || []);
   const [files, setFiles] = useState(task?.files || []);
   const [newSub, setNewSub] = useState("");
@@ -1637,6 +1639,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark }) {
       subtasks,
       links,
       files,
+      projectIds,
     });
   };
   const TABS = [
@@ -1838,6 +1841,51 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark }) {
                   ))}
                 </div>
               </div>
+              {projects.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <span className="lbl">Projeler</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                    {projects.map((p) => {
+                      const active = projectIds.includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() =>
+                            setProjectIds((prev) =>
+                              active ? prev.filter((x) => x !== p.id) : [...prev, p.id]
+                            )
+                          }
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "5px 11px",
+                            borderRadius: 8,
+                            border: `1px solid ${active ? p.color : t.border}`,
+                            background: active ? p.color + "22" : t.surface2,
+                            color: active ? p.color : t.textSub,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              background: p.color,
+                              flexShrink: 0,
+                            }}
+                          />
+                          {p.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div>
                 <span className="lbl">Not</span>
                 <textarea
@@ -3278,6 +3326,7 @@ export default function App() {
           onSave={handleSave}
           onClose={() => setModal(null)}
           dark={dark}
+          projects={projects}
         />
       )}
       {detail && (
