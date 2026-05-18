@@ -1565,6 +1565,7 @@ function TaskModal({ task, users, currentUser, onSave, onClose, dark, projects, 
   const save = () => {
     if (!title.trim()) return;
     onSave({
+      _taskId: task?.id || null,
       title: title.trim(),
       assigneeId,
       priority,
@@ -2778,13 +2779,20 @@ export default function App() {
     return d;
   };
   const handleSave = async (data) => {
-    if (!modal || modal === "new") {
-      const newTask = { id: uid(), ownerId: me.id, createdAt: Date.now(), ...data };
-      await setDoc(doc(db, "tasks", newTask.id), newTask);
-    } else {
-      await setDoc(doc(db, "tasks", (modal as any).id), { ...(modal as any), ...data });
+    const { _taskId, ...taskData } = data;
+    try {
+      if (!_taskId) {
+        const newTask = { id: uid(), ownerId: me.id, createdAt: Date.now(), ...taskData };
+        await setDoc(doc(db, "tasks", newTask.id), newTask);
+      } else {
+        const existing = tasks.find((tk) => tk.id === _taskId);
+        await setDoc(doc(db, "tasks", _taskId), { ...(existing || {}), ...taskData, id: _taskId });
+      }
+      setModal(null);
+    } catch (err) {
+      console.error("Task save failed:", err);
+      alert("Kayıt başarısız: " + (err as any)?.message);
     }
-    setModal(null);
   };
   const changeStatus = async (id, val) => {
     const task = tasks.find((tk) => tk.id === id);
